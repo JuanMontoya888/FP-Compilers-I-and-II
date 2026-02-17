@@ -271,7 +271,7 @@ QTabBar::tab:selected {
 }</string>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -282,8 +282,8 @@ QTabBar::tab:selected {
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>531</width>
-          <height>501</height>
+          <width>941</width>
+          <height>721</height>
          </rect>
         </property>
         <property name="styleSheet">
@@ -300,8 +300,8 @@ QTabBar::tab:selected {
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>531</width>
-          <height>501</height>
+          <width>941</width>
+          <height>721</height>
          </rect>
         </property>
        </widget>
