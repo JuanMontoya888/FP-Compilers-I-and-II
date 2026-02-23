@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Widget</class>
+ <widget class="QWidget" name="Widget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Widget</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">/* --- ESTILOS GENERALES (Global) --- */
+
+/* Fondo general de la aplicación y fuente */
+QWidget {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    font-family: &quot;Consolas&quot;, &quot;Courier New&quot;, monospace;
+    font-size: 14px;
+}
+
+/* --- BARRA LATERAL (Project Explorer) --- */
+/* Suponiendo que usas un QTreeView o QListWidget para los archivos */
+
+QTreeView {
+    background-color: #252526;  /* Fondo de la barra lateral */
+    border: none;
+    padding: 5px;
+    outline: 0;
+}
+
+QTreeView::item {
+    padding: 5px;
+    color: #cccccc;
+}
+
+QTreeView::item:hover {
+    background-color: #2a2d2e; /* Color al pasar el mouse */
+    border-radius: 3px;       /* Bordes redondeados como en la imagen */
+}
+
+QTreeView::item:selected {
+    background-color: #37373d; /* Color del archivo seleccionado */
+    color: #ffffff;
+    border-left: 2px solid #007acc; /* Una línea azul a la izquierda al seleccionar */
+}
+
+/* Scrollbar estilo moderno (para quitar la fea de Windows/Linux por defecto) */
+QScrollBar:vertical {
+    border: none;
+    background: #1e1e1e;
+    width: 10px;
+    margin: 0px 0px 0px 0px;
+}
+QScrollBar::handle:vertical {
+    background: #424242;
+    min-height: 20px;
+    border-radius: 5px;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    background: none;
+}
+
+/*
+Estilos para buttons
+*/
+QToolButton {
+    background-color: transparent;
+    color: #cccccc;
+    border: none;
+}
+QToolButton:hover {
+    background-color: #3e3e42;
+    border-radius: 3px;
+}
+
+/*
+Styles for edit text box
+*/
+
+QPlainTextEdit {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    font-family: &quot;Consolas&quot;, &quot;Courier New&quot;, monospace;
+    font-size: 14px;
+    border: none;
+    padding-left: 10px;
+    selection-background-color: #264f78;
+}</string>
+  </property>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
