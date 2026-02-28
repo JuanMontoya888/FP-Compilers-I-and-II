@@ -2,4 +2,4 @@
 name = "FP-IDE"
 
 [tool.pyside6-project]
-files = ["widget.py", "form.ui"]
+files = ["form.ui", "treeManager.py", "widget.py"]

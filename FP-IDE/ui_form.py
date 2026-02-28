@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'form.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.1
+## Created by: Qt User Interface Compiler version 6.10.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -16,8 +16,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QGridLayout, QHeaderView, QSizePolicy,
-    QSplitter, QTabWidget, QToolButton, QTreeWidget,
-    QTreeWidgetItem, QWidget)
+    QSplitter, QTabWidget, QTextEdit, QToolButton,
+    QTreeView, QWidget)
 
 class Ui_Widget(object):
     def setupUi(self, Widget):
@@ -159,61 +159,79 @@ class Ui_Widget(object):
         self.runButton = QToolButton(Widget)
         self.runButton.setObjectName(u"runButton")
 
-        self.gridLayout_2.addWidget(self.runButton, 0, 5, 1, 1)
-
-        self.goButton = QToolButton(Widget)
-        self.goButton.setObjectName(u"goButton")
-
-        self.gridLayout_2.addWidget(self.goButton, 0, 4, 1, 1)
-
-        self.toolsButton = QToolButton(Widget)
-        self.toolsButton.setObjectName(u"toolsButton")
-
-        self.gridLayout_2.addWidget(self.toolsButton, 0, 6, 1, 1)
-
-        self.selButton = QToolButton(Widget)
-        self.selButton.setObjectName(u"selButton")
-
-        self.gridLayout_2.addWidget(self.selButton, 0, 2, 1, 1)
-
-        self.fileButton = QToolButton(Widget)
-        self.fileButton.setObjectName(u"fileButton")
-
-        self.gridLayout_2.addWidget(self.fileButton, 0, 0, 1, 1)
-
-        self.editButton = QToolButton(Widget)
-        self.editButton.setObjectName(u"editButton")
-
-        self.gridLayout_2.addWidget(self.editButton, 0, 1, 1, 1)
-
-        self.viewButton = QToolButton(Widget)
-        self.viewButton.setObjectName(u"viewButton")
-
-        self.gridLayout_2.addWidget(self.viewButton, 0, 3, 1, 1)
+        self.gridLayout_2.addWidget(self.runButton, 0, 6, 1, 1)
 
         self.splitter = QSplitter(Widget)
         self.splitter.setObjectName(u"splitter")
         self.splitter.setOrientation(Qt.Orientation.Horizontal)
-        self.treeWidget = QTreeWidget(self.splitter)
-        __qtreewidgetitem = QTreeWidgetItem()
-        __qtreewidgetitem.setText(0, u"1");
-        self.treeWidget.setHeaderItem(__qtreewidgetitem)
-        self.treeWidget.setObjectName(u"treeWidget")
-        self.splitter.addWidget(self.treeWidget)
+        self.treeView = QTreeView(self.splitter)
+        self.treeView.setObjectName(u"treeView")
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.treeView.sizePolicy().hasHeightForWidth())
+        self.treeView.setSizePolicy(sizePolicy)
+        self.splitter.addWidget(self.treeView)
         self.tabWidget = QTabWidget(self.splitter)
         self.tabWidget.setObjectName(u"tabWidget")
         self.tab = QWidget()
         self.tab.setObjectName(u"tab")
+        self.textEdit = QTextEdit(self.tab)
+        self.textEdit.setObjectName(u"textEdit")
+        self.textEdit.setGeometry(QRect(3, 0, 16777215, 16777215))
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.textEdit.sizePolicy().hasHeightForWidth())
+        self.textEdit.setSizePolicy(sizePolicy1)
         self.tabWidget.addTab(self.tab, "")
         self.tab_2 = QWidget()
         self.tab_2.setObjectName(u"tab_2")
         self.tabWidget.addTab(self.tab_2, "")
         self.splitter.addWidget(self.tabWidget)
 
-        self.gridLayout_2.addWidget(self.splitter, 1, 0, 1, 9)
+        self.gridLayout_2.addWidget(self.splitter, 1, 0, 1, 11)
+
+        self.goButton = QToolButton(Widget)
+        self.goButton.setObjectName(u"goButton")
+
+        self.gridLayout_2.addWidget(self.goButton, 0, 5, 1, 1)
+
+        self.viewButton = QToolButton(Widget)
+        self.viewButton.setObjectName(u"viewButton")
+
+        self.gridLayout_2.addWidget(self.viewButton, 0, 2, 1, 1)
+
+        self.editButton = QToolButton(Widget)
+        self.editButton.setObjectName(u"editButton")
+
+        self.gridLayout_2.addWidget(self.editButton, 0, 1, 1, 1)
+
+        self.toolsButton = QToolButton(Widget)
+        self.toolsButton.setObjectName(u"toolsButton")
+
+        self.gridLayout_2.addWidget(self.toolsButton, 0, 7, 1, 1)
+
+        self.selButton = QToolButton(Widget)
+        self.selButton.setObjectName(u"selButton")
+
+        self.gridLayout_2.addWidget(self.selButton, 0, 3, 1, 1)
+
+        self.toolButton = QToolButton(Widget)
+        self.toolButton.setObjectName(u"toolButton")
+
+        self.gridLayout_2.addWidget(self.toolButton, 0, 4, 1, 1)
+
+        self.fileButton = QToolButton(Widget)
+        self.fileButton.setObjectName(u"fileButton")
+
+        self.gridLayout_2.addWidget(self.fileButton, 0, 0, 1, 1)
 
 
         self.retranslateUi(Widget)
+
+        self.tabWidget.setCurrentIndex(0)
+
 
         QMetaObject.connectSlotsByName(Widget)
     # setupUi
@@ -221,13 +239,14 @@ class Ui_Widget(object):
     def retranslateUi(self, Widget):
         Widget.setWindowTitle(QCoreApplication.translate("Widget", u"Widget", None))
         self.runButton.setText(QCoreApplication.translate("Widget", u"Run", None))
-        self.goButton.setText(QCoreApplication.translate("Widget", u"Go", None))
-        self.toolsButton.setText(QCoreApplication.translate("Widget", u"...", None))
-        self.selButton.setText(QCoreApplication.translate("Widget", u"Selection", None))
-        self.fileButton.setText(QCoreApplication.translate("Widget", u"File", None))
-        self.editButton.setText(QCoreApplication.translate("Widget", u"Edit", None))
-        self.viewButton.setText(QCoreApplication.translate("Widget", u"View", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("Widget", u"Tab 1", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("Widget", u"Tab 2", None))
+        self.goButton.setText(QCoreApplication.translate("Widget", u"Go", None))
+        self.viewButton.setText(QCoreApplication.translate("Widget", u"View", None))
+        self.editButton.setText(QCoreApplication.translate("Widget", u"Edit", None))
+        self.toolsButton.setText(QCoreApplication.translate("Widget", u"...", None))
+        self.selButton.setText(QCoreApplication.translate("Widget", u"Selection", None))
+        self.toolButton.setText(QCoreApplication.translate("Widget", u"Window", None))
+        self.fileButton.setText(QCoreApplication.translate("Widget", u"File", None))
     # retranslateUi
 
