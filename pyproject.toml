@@ -1,0 +1,5 @@
+[project]
+name = "FP-IDE"
+
+[tool.pyside6-project]
+files = ["fileEditor.py", "form.ui", "treeManager.py", "widget.py"]

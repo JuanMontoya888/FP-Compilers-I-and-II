@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Widget</class>
+ <widget class="QWidget" name="Widget">
+  <property name="enabled">
+   <bool>true</bool>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Widget</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">/* --- ESTILOS GENERALES --- */
+QWidget {
+    background-color: #1e1e1e;
+    color: #cccccc;
+    font-family: &quot;Segoe UI&quot;, &quot;Consolas&quot;, sans-serif;
+    font-size: 13px;
+}
+
+/* --- BARRA SUPERIOR (Menú simulado) --- */
+QToolButton {
+    background-color: transparent;
+    color: #cccccc;
+    border: none;
+    padding: 5px 10px;
+    margin: 2px;
+}
+
+QToolButton:hover {
+    background-color: #3e3e42; /* Gris más claro al pasar el mouse */
+    border-radius: 4px;
+    color: #ffffff;
+}
+
+/* --- ACTIVITY BAR (Extrema izquierda, si decides agregarla) --- */
+/* Asumiendo que le pones un objectName como 'activityBar' a su contenedor */
+#activityBar QToolButton {
+    padding: 10px;
+    margin: 0px;
+    border-radius: 0px;
+}
+#activityBar QToolButton:checked {
+    border-left: 2px solid #007acc; /* Línea azul de selección */
+}
+
+/* --- SPLITTER (Divisor arrastrable) --- */
+QSplitter::handle {
+    background-color: #1e1e1e;
+    border-left: 1px solid #252526;
+    border-right: 1px solid #2b2b2b;
+    width: 2px;
+}
+QSplitter::handle:hover {
+    background-color: #007acc; /* Se ilumina de azul al intentar arrastrar */
+}
+
+/* --- BARRA LATERAL (Project Explorer) --- */
+QTreeWidget {
+    background-color: #252526;
+    border: none;
+    padding-top: 5px;
+    outline: none; /* Quita el borde punteado al hacer clic */
+}
+
+QTreeWidget::item {
+    padding: 4px;
+    color: #cccccc;
+}
+
+QTreeWidget::item:hover {
+    background-color: #2a2d2e;
+}
+
+QTreeWidget::item:selected {
+    background-color: #37373d;
+    color: #ffffff;
+}
+
+/* --- PESTAÑAS (QTabWidget) --- */
+QTabWidget::pane {
+    border: none;
+    background-color: #1e1e1e;
+}
+
+QTabBar::tab {
+    background-color: #2d2d2d;
+    color: #969696;
+    padding: 8px 15px;
+    border: none;
+    border-right: 1px solid #252526;
+}
+
+QTabBar::tab:selected {
+    background-color: #1e1e1e;
+    color: #ffffff;
+    border-top: 2px solid #007acc; /* Línea azul en la pestaña activa */
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: #333333;
+}
+
+/* --- EDITOR DE TEXTO --- */
+QPlainTextEdit {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    font-family: &quot;Consolas&quot;, &quot;Courier New&quot;, monospace;
+    font-size: 14px;
+    border: none;
+    padding: 10px;
+    selection-background-color: #264f78; /* Color de selección de texto típico de VS Code */
+}
+
+/* --- SCROLLBARS --- */
+QScrollBar:vertical, QScrollBar:horizontal {
+    border: none;
+    background: #1e1e1e;
+    width: 14px;
+    height: 14px;
+}
+
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
+    background: #424242;
+    border-radius: 7px;
+    min-height: 20px;
+    min-width: 20px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
+    background: #4f4f4f; /* Se aclara ligeramente al pasar el mouse */
+}
+
+QScrollBar::add-line, QScrollBar::sub-line {
+    background: none;
+    border: none;
+}</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_2">
+   <item row="0" column="6">
+    <widget class="QToolButton" name="runButton">
+     <property name="text">
+      <string>Run</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0" colspan="11">
+    <widget class="QSplitter" name="splitter">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <widget class="QTreeView" name="treeView">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+     </widget>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="tab">
+       <attribute name="title">
+        <string>Tab 1</string>
+       </attribute>
+       <widget class="QTextEdit" name="textEdit">
+        <property name="geometry">
+         <rect>
+          <x>3</x>
+          <y>0</y>
+          <width>16777215</width>
+          <height>16777215</height>
+         </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="tab_2">
+       <attribute name="title">
+        <string>Tab 2</string>
+       </attribute>
+      </widget>
+     </widget>
+    </widget>
+   </item>
+   <item row="0" column="5">
+    <widget class="QToolButton" name="goButton">
+     <property name="text">
+      <string>Go</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="2">
+    <widget class="QToolButton" name="viewButton">
+     <property name="text">
+      <string>View</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QToolButton" name="editButton">
+     <property name="text">
+      <string>Edit</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="7">
+    <widget class="QToolButton" name="toolsButton">
+     <property name="text">
+      <string>...</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="3">
+    <widget class="QToolButton" name="selButton">
+     <property name="text">
+      <string>Selection</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="4">
+    <widget class="QToolButton" name="toolButton">
+     <property name="text">
+      <string>Window</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QToolButton" name="fileButton">
+     <property name="text">
+      <string>File</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
