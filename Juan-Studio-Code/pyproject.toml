@@ -1,5 +1,5 @@
 [project]
-name = "FP-IDE"
+name = "Juan-Studio-Code"
 
 [tool.pyside6-project]
 files = ["form.ui", "treeManager.py", "widget.py"]
