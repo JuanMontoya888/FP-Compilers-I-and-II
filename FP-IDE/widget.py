@@ -17,7 +17,7 @@ class Widget(QWidget):
         self.ui.splitter.setStretchFactor(1, 1) # Panel derecho expansible
 
         # Instanciamos el manager pasando el treeView de la UI
-        self.explorer = TreeManager(self.ui.treeView)
+        self.explorer = TreeManager(self.ui.treeView, self.ui.fileButton, self.ui.textEdit)
 
 
 if __name__ == "__main__":
