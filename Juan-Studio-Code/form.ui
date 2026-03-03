@@ -21,7 +21,7 @@
 QWidget {
     background-color: #1e1e1e;
     color: #cccccc;
-    font-family: &quot;Segoe UI&quot;, &quot;Consolas&quot;, sans-serif;
+    font-family: &quot;Segoe UI&quot;, &quot;San Francisco&quot;, sans-serif;
     font-size: 13px;
 }
 
@@ -30,56 +30,58 @@ QToolButton {
     background-color: transparent;
     color: #cccccc;
     border: none;
-    padding: 5px 10px;
+    padding: 6px 12px;
     margin: 2px;
+    border-radius: 4px; /* Bordes redondeados sutiles */
 }
 
 QToolButton:hover {
     background-color: #3e3e42; /* Gris más claro al pasar el mouse */
-    border-radius: 4px;
     color: #ffffff;
 }
 
-/* --- ACTIVITY BAR (Extrema izquierda, si decides agregarla) --- */
-/* Asumiendo que le pones un objectName como 'activityBar' a su contenedor */
-#activityBar QToolButton {
-    padding: 10px;
-    margin: 0px;
-    border-radius: 0px;
-}
-#activityBar QToolButton:checked {
-    border-left: 2px solid #007acc; /* Línea azul de selección */
+/* Quita la flecha por defecto de los menús desplegables */
+QToolButton::menu-indicator {
+    image: none; 
 }
 
 /* --- SPLITTER (Divisor arrastrable) --- */
 QSplitter::handle {
     background-color: #1e1e1e;
+}
+/* Diferenciamos si arrastras vertical u horizontalmente */
+QSplitter::handle:horizontal {
     border-left: 1px solid #252526;
-    border-right: 1px solid #2b2b2b;
     width: 2px;
 }
+QSplitter::handle:vertical {
+    border-top: 1px solid #252526;
+    height: 2px;
+}
 QSplitter::handle:hover {
-    background-color: #007acc; /* Se ilumina de azul al intentar arrastrar */
+    background-color: #007acc; /* Azul VS Code al pasar el mouse */
 }
 
 /* --- BARRA LATERAL (Project Explorer) --- */
-QTreeWidget {
-    background-color: #252526;
-    border: none;
-    padding-top: 5px;
-    outline: none; /* Quita el borde punteado al hacer clic */
-}
-
-QTreeWidget::item {
-    padding: 4px;
+/* ¡CORREGIDO A QTreeView! */
+QTreeView {
+    background-color: #252526; /* Un tono ligeramente distinto al editor */
     color: #cccccc;
+    border: none;
+    outline: none; /* Quita el borde punteado horrible de Windows al hacer clic */
 }
 
-QTreeWidget::item:hover {
+QTreeView::item {
+    padding: 4px;
+    border-radius: 3px;
+}
+
+QTreeView::item:hover {
     background-color: #2a2d2e;
+    color: #ffffff;
 }
 
-QTreeWidget::item:selected {
+QTreeView::item:selected {
     background-color: #37373d;
     color: #ffffff;
 }
@@ -92,10 +94,10 @@ QTabWidget::pane {
 
 QTabBar::tab {
     background-color: #2d2d2d;
-    color: #969696;
-    padding: 8px 15px;
+    color: #858585;
+    padding: 8px 20px;
     border: none;
-    border-right: 1px solid #252526;
+    border-right: 1px solid #1e1e1e; /* Separador entre pestañas */
 }
 
 QTabBar::tab:selected {
@@ -106,53 +108,54 @@ QTabBar::tab:selected {
 
 QTabBar::tab:hover:!selected {
     background-color: #333333;
+    color: #cccccc;
 }
 
-/* --- EDITOR DE TEXTO --- */
+/* --- EDITOR DE CÓDIGO --- */
 QPlainTextEdit {
     background-color: #1e1e1e;
     color: #d4d4d4;
     font-family: &quot;Consolas&quot;, &quot;Courier New&quot;, monospace;
     font-size: 14px;
     border: none;
-    padding: 10px;
-    selection-background-color: #264f78; /* Color de selección de texto típico de VS Code */
+    padding: 5px;
+    selection-background-color: #264f78; /* Color azul transparente al seleccionar texto */
 }
 
-/* --- SCROLLBARS --- */
+/* --- SCROLLBARS NIVEL DIOS --- */
 QScrollBar:vertical, QScrollBar:horizontal {
     border: none;
-    background: #1e1e1e;
-    width: 14px;
-    height: 14px;
+    background: transparent; /* Fondo invisible */
+    width: 12px;
+    height: 12px;
+    margin: 0px;
 }
 
 QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
     background: #424242;
-    border-radius: 7px;
+    border-radius: 5px; /* Scrollbars redondeados */
     min-height: 20px;
     min-width: 20px;
-    margin: 2px;
+    margin: 2px; /* Margen para que floten y no toquen el borde */
 }
 
 QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
-    background: #4f4f4f; /* Se aclara ligeramente al pasar el mouse */
+    background: #4f4f4f; 
 }
 
+/* Ocultamos las flechitas de los extremos (nadie las usa en un IDE moderno) */
 QScrollBar::add-line, QScrollBar::sub-line {
     background: none;
     border: none;
+    height: 0px;
+    width: 0px;
+}
+QScrollBar::add-page, QScrollBar::sub-page {
+    background: none;
 }</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
-   <item row="0" column="6">
-    <widget class="QToolButton" name="runButton">
-     <property name="text">
-      <string>Run</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="0" colspan="11">
+   <item row="1" column="0" colspan="12">
     <widget class="QSplitter" name="splitter">
      <property name="orientation">
       <enum>Qt::Orientation::Horizontal</enum>
@@ -167,49 +170,9 @@ QScrollBar::add-line, QScrollBar::sub-line {
      </widget>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>-1</number>
       </property>
-      <widget class="QWidget" name="tab">
-       <attribute name="title">
-        <string>Tab 1</string>
-       </attribute>
-       <widget class="QTextEdit" name="textEdit">
-        <property name="geometry">
-         <rect>
-          <x>3</x>
-          <y>0</y>
-          <width>16777215</width>
-          <height>16777215</height>
-         </rect>
-        </property>
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-       </widget>
-      </widget>
-      <widget class="QWidget" name="tab_2">
-       <attribute name="title">
-        <string>Tab 2</string>
-       </attribute>
-      </widget>
      </widget>
-    </widget>
-   </item>
-   <item row="0" column="5">
-    <widget class="QToolButton" name="goButton">
-     <property name="text">
-      <string>Go</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="2">
-    <widget class="QToolButton" name="viewButton">
-     <property name="text">
-      <string>View</string>
-     </property>
     </widget>
    </item>
    <item row="0" column="1">
@@ -219,7 +182,28 @@ QScrollBar::add-line, QScrollBar::sub-line {
      </property>
     </widget>
    </item>
+   <item row="0" column="6">
+    <widget class="QToolButton" name="runButton">
+     <property name="text">
+      <string>Run</string>
+     </property>
+    </widget>
+   </item>
    <item row="0" column="7">
+    <widget class="QToolButton" name="terminalButton">
+     <property name="text">
+      <string>Terminal</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="5">
+    <widget class="QToolButton" name="goButton">
+     <property name="text">
+      <string>Go</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="8">
     <widget class="QToolButton" name="toolsButton">
      <property name="text">
       <string>...</string>
@@ -233,10 +217,10 @@ QScrollBar::add-line, QScrollBar::sub-line {
      </property>
     </widget>
    </item>
-   <item row="0" column="4">
-    <widget class="QToolButton" name="toolButton">
+   <item row="0" column="2">
+    <widget class="QToolButton" name="viewButton">
      <property name="text">
-      <string>Window</string>
+      <string>View</string>
      </property>
     </widget>
    </item>
@@ -244,6 +228,13 @@ QScrollBar::add-line, QScrollBar::sub-line {
     <widget class="QToolButton" name="fileButton">
      <property name="text">
       <string>File</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="4">
+    <widget class="QToolButton" name="toolButton">
+     <property name="text">
+      <string>Window</string>
      </property>
     </widget>
    </item>

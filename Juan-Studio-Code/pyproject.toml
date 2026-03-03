@@ -2,4 +2,4 @@
 name = "Juan-Studio-Code"
 
 [tool.pyside6-project]
-files = ["form.ui", "treeManager.py", "widget.py"]
+files = ["codeEditorManager.py", "form.ui", "shortcuts.py", "terminalManager.py", "treeManager.py", "widget.py"]
