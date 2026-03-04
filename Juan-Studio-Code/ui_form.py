@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'form.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.1
+## Created by: Qt User Interface Compiler version 6.10.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -238,7 +238,7 @@ class Ui_Widget(object):
     # setupUi
 
     def retranslateUi(self, Widget):
-        Widget.setWindowTitle(QCoreApplication.translate("Widget", u"Widget", None))
+        Widget.setWindowTitle(QCoreApplication.translate("Widget", u"Juan Studio Code", None))
         self.editButton.setText(QCoreApplication.translate("Widget", u"Edit", None))
         self.runButton.setText(QCoreApplication.translate("Widget", u"Run", None))
         self.terminalButton.setText(QCoreApplication.translate("Widget", u"Terminal", None))
