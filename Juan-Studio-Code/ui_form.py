@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'form.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.1
+## Created by: Qt User Interface Compiler version 6.10.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -16,8 +16,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QGridLayout, QHeaderView, QSizePolicy,
-    QSplitter, QTabWidget, QToolButton, QTreeView,
-    QVBoxLayout, QWidget)
+    QSpacerItem, QSplitter, QTabWidget, QToolButton,
+    QTreeView, QVBoxLayout, QWidget)
 
 class Ui_Widget(object):
     def setupUi(self, Widget):
@@ -300,6 +300,10 @@ class Ui_Widget(object):
         self.errorButton.setObjectName(u"errorButton")
 
         self.verticalLayout.addWidget(self.errorButton)
+
+        self.verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.verticalLayout.addItem(self.verticalSpacer)
 
 
         self.gridLayout_2.addLayout(self.verticalLayout, 0, 0, 2, 1)
