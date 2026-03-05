@@ -50,6 +50,7 @@ class Shortcuts:
         # Si tienes un botón Run, lo puedes conectar así:
         # self.parent.ui.runButton.click()
 
+    # Metodo para ocultar el panel izquierdo
     def toggle_sidebar(self):
         """Oculta o muestra el panel izquierdo con Ctrl+B."""
         sizes = self.parent.ui.splitter.sizes()
@@ -58,10 +59,10 @@ class Shortcuts:
         else:
             self.parent.ui.splitter.setSizes([250, sizes[1]])
 
+    # Metodo para cerrar y abrir el tab widget
     def toggle_terminal(self):
-        """Oculta o muestra la consola en la parte inferior."""
-        # Accedemos a la terminal que creamos en widget.py
-        if self.parent.terminal.isVisible():
-            self.parent.terminal.hide()
-        else:
-            self.parent.terminal.show()
+            """Oculta o muestra el panel inferior completo."""
+            if self.parent.terminal_manager.isVisible():
+                self.parent.terminal_manager.hide()
+            else:
+                self.parent.terminal_manager.show()

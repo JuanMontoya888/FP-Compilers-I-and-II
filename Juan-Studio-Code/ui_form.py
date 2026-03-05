@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'form.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.10.2
+## Created by: Qt User Interface Compiler version 6.9.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -17,7 +17,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QGridLayout, QHeaderView, QSizePolicy,
     QSplitter, QTabWidget, QToolButton, QTreeView,
-    QWidget)
+    QVBoxLayout, QWidget)
 
 class Ui_Widget(object):
     def setupUi(self, Widget):
@@ -33,51 +33,48 @@ class Ui_Widget(object):
 "    font-size: 13px;\n"
 "}\n"
 "\n"
-"/* --- BARRA SUPERIOR (Men\u00fa simulado) --- */\n"
+"/* --- BARRA SUPERIOR --- */\n"
 "QToolButton {\n"
 "    background-color: transparent;\n"
 "    color: #cccccc;\n"
 "    border: none;\n"
 "    padding: 6px 12px;\n"
 "    margin: 2px;\n"
-"    border-radius: 4px; /* Bordes redondeados sutiles */\n"
+"    border-radius: 4px;\n"
 "}\n"
 "\n"
 "QToolButton:hover {\n"
-"    background-color: #3e3e42; /* Gris m\u00e1s claro al pasar el mouse */\n"
+"    background-color: #3e3e42;\n"
 "    color: #ffffff;\n"
 "}\n"
 "\n"
-"/* Quita la flecha por defecto de los men\u00fas desplegables */\n"
 "QToolButton::menu-indicator {\n"
 "    image: none; \n"
 "}\n"
 "\n"
-"/* --- SPLITTER (Divisor arrastrable) --- */\n"
+"/* --- SPLITTER --- */\n"
 "QSplitter::handle {\n"
 "    background-color: #1e1e1e;\n"
 "}\n"
-"/* Diferenciamos si arrastras vertical u horizontalmente */\n"
 "QSplitter::handle:horizontal {\n"
 "    border-left: 1px solid #252526;\n"
-"    width:"
-                        " 2px;\n"
+"    width: 2px;\n"
 "}\n"
 "QSplitter::handle:vertical {\n"
 "    border-top: 1px solid #252526;\n"
 "    height: 2px;\n"
 "}\n"
 "QSplitter::handle:hover {\n"
-"    background-color: #007acc; /* Azul VS Code al pasar el mouse */\n"
+"    background-color: #007acc;\n"
 "}\n"
 "\n"
 "/* --- BARRA LATERAL (Project Explorer) --- */\n"
-"/* \u00a1CORREGIDO A QTreeView! */\n"
-"QTreeView {\n"
-"    background-color: #252526; /* Un tono ligeramente distinto al editor */\n"
+"QTreeView {"
+                        "\n"
+"    background-color: #252526;\n"
 "    color: #cccccc;\n"
 "    border: none;\n"
-"    outline: none; /* Quita el borde punteado horrible de Windows al hacer clic */\n"
+"    outline: none;\n"
 "}\n"
 "\n"
 "QTreeView::item {\n"
@@ -95,25 +92,24 @@ class Ui_Widget(object):
 "    color: #ffffff;\n"
 "}\n"
 "\n"
-"/* --- PESTA\u00d1AS (QTabWidget) --- */\n"
+"/* --- PESTA\u00d1AS PRINCIPALES (EDITOR) --- */\n"
 "QTabWidget::pane {\n"
 "    border: none;\n"
 "    background-color: #1e1e1e;\n"
 "}\n"
 "\n"
 "QTabBar::tab {\n"
-"    background-color: #2d2d2d;"
-                        "\n"
+"    background-color: #2d2d2d;\n"
 "    color: #858585;\n"
 "    padding: 8px 20px;\n"
 "    border: none;\n"
-"    border-right: 1px solid #1e1e1e; /* Separador entre pesta\u00f1as */\n"
+"    border-right: 1px solid #1e1e1e;\n"
 "}\n"
 "\n"
 "QTabBar::tab:selected {\n"
 "    background-color: #1e1e1e;\n"
 "    color: #ffffff;\n"
-"    border-top: 2px solid #007acc; /* L\u00ednea azul en la pesta\u00f1a activa */\n"
+"    border-top: 2px solid #007acc;\n"
 "}\n"
 "\n"
 "QTabBar::tab:hover:!selected {\n"
@@ -123,49 +119,134 @@ class Ui_Widget(object):
 "\n"
 "/* --- EDITOR DE C\u00d3DIGO --- */\n"
 "QPlainTextEdit {\n"
-"    background-color: #1e1e1e;\n"
+""
+                        "    background-color: #1e1e1e;\n"
 "    color: #d4d4d4;\n"
 "    font-family: \"Consolas\", \"Courier New\", monospace;\n"
 "    font-size: 14px;\n"
 "    border: none;\n"
 "    padding: 5px;\n"
-"    selection-background-color: #264f78; /* Color azul transparente al seleccionar texto */\n"
+"    selection-background-color: #264f78;\n"
 "}\n"
 "\n"
-"/* --- SCROLLBARS NIVEL DIOS --- */\n"
-"QScrollBar:vertical, QScrollBar:horizontal {\n"
+"/* --- PANEL INFERIOR (Terminal y An\u00e1lisis) --- */\n"
+"QTabWidget#bottomTabs::pane {\n"
 "    border: none;\n"
-"    background: transparent; /* Fondo invisible */\n"
+"    background-color: #181818;\n"
+"}\n"
+"\n"
+"QTabWidget#bottomTabs QTabBar {\n"
+"    background-color: #1e1e1e;\n"
+"}\n"
+"\n"
+"QTabWidget#bottomTabs QTabBar::tab {\n"
+"    background-color: #2d2d2d;\n"
+"    color: #858585;\n"
+"    padding: 5px 15px;\n"
+"    font-size: 11px;\n"
+"    border-right: 1px solid #181818;\n"
+"    border-top: none;\n"
+"}\n"
+"\n"
+"QTabWidget#bottomTabs QTabBar::tab:selected {\n"
+"    background-color: #181818;\n"
+"    color: white;\n"
+"    border-bottom: 2px solid #007acc;\n"
+"}\n"
+"\n"
+"QTabWidget#bottomTabs QPlainTextEdit {\n"
+"    background-color: #181818;\n"
+"    padding: 10px;\n"
+"}\n"
+"\n"
+"/* --- SCROLLBARS --- */\n"
+"QSc"
+                        "rollBar:vertical, QScrollBar:horizontal {\n"
+"    border: none;\n"
+"    background: transparent;\n"
 "    width: 12px;\n"
 "    height: 12px;\n"
-" "
-                        "   margin: 0px;\n"
+"    margin: 0px;\n"
 "}\n"
 "\n"
 "QScrollBar::handle:vertical, QScrollBar::handle:horizontal {\n"
 "    background: #424242;\n"
-"    border-radius: 5px; /* Scrollbars redondeados */\n"
+"    border-radius: 5px;\n"
 "    min-height: 20px;\n"
 "    min-width: 20px;\n"
-"    margin: 2px; /* Margen para que floten y no toquen el borde */\n"
+"    margin: 2px;\n"
 "}\n"
 "\n"
 "QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {\n"
 "    background: #4f4f4f; \n"
 "}\n"
 "\n"
-"/* Ocultamos las flechitas de los extremos (nadie las usa en un IDE moderno) */\n"
-"QScrollBar::add-line, QScrollBar::sub-line {\n"
+"QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::sub-page {\n"
 "    background: none;\n"
 "    border: none;\n"
 "    height: 0px;\n"
 "    width: 0px;\n"
 "}\n"
-"QScrollBar::add-page, QScrollBar::sub-page {\n"
-"    background: none;\n"
+"\n"
+"/* --- ACTIVITY BAR --- */\n"
+"QToolButton {\n"
+"    background-color: transparent;\n"
+"    border: none;\n"
+"    padding: 8px;\n"
+"    border-radius: 4px;\n"
+"}\n"
+"\n"
+"QToolButton:hover {\n"
+"    background-color: #333333; \n"
+"}\n"
+"\n"
+"QToolButton:checked {\n"
+"    border-left: 2px solid #007acc; \n"
+"    background-color: #1"
+                        "e1e1e;\n"
 "}")
         self.gridLayout_2 = QGridLayout(Widget)
         self.gridLayout_2.setObjectName(u"gridLayout_2")
+        self.runButton = QToolButton(Widget)
+        self.runButton.setObjectName(u"runButton")
+
+        self.gridLayout_2.addWidget(self.runButton, 0, 7, 1, 1)
+
+        self.viewButton = QToolButton(Widget)
+        self.viewButton.setObjectName(u"viewButton")
+
+        self.gridLayout_2.addWidget(self.viewButton, 0, 3, 1, 1)
+
+        self.fileButton = QToolButton(Widget)
+        self.fileButton.setObjectName(u"fileButton")
+
+        self.gridLayout_2.addWidget(self.fileButton, 0, 1, 1, 1)
+
+        self.toolsButton = QToolButton(Widget)
+        self.toolsButton.setObjectName(u"toolsButton")
+
+        self.gridLayout_2.addWidget(self.toolsButton, 0, 9, 1, 1)
+
+        self.toolButton = QToolButton(Widget)
+        self.toolButton.setObjectName(u"toolButton")
+
+        self.gridLayout_2.addWidget(self.toolButton, 0, 5, 1, 1)
+
+        self.goButton = QToolButton(Widget)
+        self.goButton.setObjectName(u"goButton")
+
+        self.gridLayout_2.addWidget(self.goButton, 0, 6, 1, 1)
+
+        self.selButton = QToolButton(Widget)
+        self.selButton.setObjectName(u"selButton")
+
+        self.gridLayout_2.addWidget(self.selButton, 0, 4, 1, 1)
+
+        self.editButton = QToolButton(Widget)
+        self.editButton.setObjectName(u"editButton")
+
+        self.gridLayout_2.addWidget(self.editButton, 0, 2, 1, 1)
+
         self.splitter = QSplitter(Widget)
         self.splitter.setObjectName(u"splitter")
         self.splitter.setOrientation(Qt.Orientation.Horizontal)
@@ -181,52 +262,47 @@ class Ui_Widget(object):
         self.tabWidget.setObjectName(u"tabWidget")
         self.splitter.addWidget(self.tabWidget)
 
-        self.gridLayout_2.addWidget(self.splitter, 1, 0, 1, 12)
-
-        self.editButton = QToolButton(Widget)
-        self.editButton.setObjectName(u"editButton")
-
-        self.gridLayout_2.addWidget(self.editButton, 0, 1, 1, 1)
-
-        self.runButton = QToolButton(Widget)
-        self.runButton.setObjectName(u"runButton")
-
-        self.gridLayout_2.addWidget(self.runButton, 0, 6, 1, 1)
+        self.gridLayout_2.addWidget(self.splitter, 1, 1, 1, 12)
 
         self.terminalButton = QToolButton(Widget)
         self.terminalButton.setObjectName(u"terminalButton")
 
-        self.gridLayout_2.addWidget(self.terminalButton, 0, 7, 1, 1)
+        self.gridLayout_2.addWidget(self.terminalButton, 0, 8, 1, 1)
 
-        self.goButton = QToolButton(Widget)
-        self.goButton.setObjectName(u"goButton")
+        self.verticalLayout = QVBoxLayout()
+        self.verticalLayout.setObjectName(u"verticalLayout")
+        self.lexicoButton = QToolButton(Widget)
+        self.lexicoButton.setObjectName(u"lexicoButton")
 
-        self.gridLayout_2.addWidget(self.goButton, 0, 5, 1, 1)
+        self.verticalLayout.addWidget(self.lexicoButton)
 
-        self.toolsButton = QToolButton(Widget)
-        self.toolsButton.setObjectName(u"toolsButton")
+        self.sintacticoButton = QToolButton(Widget)
+        self.sintacticoButton.setObjectName(u"sintacticoButton")
 
-        self.gridLayout_2.addWidget(self.toolsButton, 0, 8, 1, 1)
+        self.verticalLayout.addWidget(self.sintacticoButton)
 
-        self.selButton = QToolButton(Widget)
-        self.selButton.setObjectName(u"selButton")
+        self.semanticoButton = QToolButton(Widget)
+        self.semanticoButton.setObjectName(u"semanticoButton")
 
-        self.gridLayout_2.addWidget(self.selButton, 0, 3, 1, 1)
+        self.verticalLayout.addWidget(self.semanticoButton)
 
-        self.viewButton = QToolButton(Widget)
-        self.viewButton.setObjectName(u"viewButton")
+        self.codIntButton = QToolButton(Widget)
+        self.codIntButton.setObjectName(u"codIntButton")
 
-        self.gridLayout_2.addWidget(self.viewButton, 0, 2, 1, 1)
+        self.verticalLayout.addWidget(self.codIntButton)
 
-        self.fileButton = QToolButton(Widget)
-        self.fileButton.setObjectName(u"fileButton")
+        self.runButton_ = QToolButton(Widget)
+        self.runButton_.setObjectName(u"runButton_")
 
-        self.gridLayout_2.addWidget(self.fileButton, 0, 0, 1, 1)
+        self.verticalLayout.addWidget(self.runButton_)
 
-        self.toolButton = QToolButton(Widget)
-        self.toolButton.setObjectName(u"toolButton")
+        self.errorButton = QToolButton(Widget)
+        self.errorButton.setObjectName(u"errorButton")
 
-        self.gridLayout_2.addWidget(self.toolButton, 0, 4, 1, 1)
+        self.verticalLayout.addWidget(self.errorButton)
+
+
+        self.gridLayout_2.addLayout(self.verticalLayout, 0, 0, 2, 1)
 
 
         self.retranslateUi(Widget)
@@ -239,14 +315,20 @@ class Ui_Widget(object):
 
     def retranslateUi(self, Widget):
         Widget.setWindowTitle(QCoreApplication.translate("Widget", u"Juan Studio Code", None))
-        self.editButton.setText(QCoreApplication.translate("Widget", u"Edit", None))
         self.runButton.setText(QCoreApplication.translate("Widget", u"Run", None))
-        self.terminalButton.setText(QCoreApplication.translate("Widget", u"Terminal", None))
-        self.goButton.setText(QCoreApplication.translate("Widget", u"Go", None))
-        self.toolsButton.setText(QCoreApplication.translate("Widget", u"...", None))
-        self.selButton.setText(QCoreApplication.translate("Widget", u"Selection", None))
         self.viewButton.setText(QCoreApplication.translate("Widget", u"View", None))
         self.fileButton.setText(QCoreApplication.translate("Widget", u"File", None))
+        self.toolsButton.setText(QCoreApplication.translate("Widget", u"...", None))
         self.toolButton.setText(QCoreApplication.translate("Widget", u"Window", None))
+        self.goButton.setText(QCoreApplication.translate("Widget", u"Go", None))
+        self.selButton.setText(QCoreApplication.translate("Widget", u"Selection", None))
+        self.editButton.setText(QCoreApplication.translate("Widget", u"Edit", None))
+        self.terminalButton.setText(QCoreApplication.translate("Widget", u"Terminal", None))
+        self.lexicoButton.setText(QCoreApplication.translate("Widget", u"...", None))
+        self.sintacticoButton.setText(QCoreApplication.translate("Widget", u"...", None))
+        self.semanticoButton.setText(QCoreApplication.translate("Widget", u"...", None))
+        self.codIntButton.setText(QCoreApplication.translate("Widget", u"...", None))
+        self.runButton_.setText(QCoreApplication.translate("Widget", u"...", None))
+        self.errorButton.setText(QCoreApplication.translate("Widget", u"...", None))
     # retranslateUi
 

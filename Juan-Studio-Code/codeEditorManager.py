@@ -1,9 +1,10 @@
+# This Python file uses the following encoding: utf-8
 from PySide6.QtWidgets import QPlainTextEdit, QVBoxLayout, QWidget, QTextEdit
 from PySide6.QtCore import Qt, QRect, QSize
 from PySide6.QtGui import QPainter, QColor, QTextFormat
 
 # =====================================================================
-# EL ÁREA DE NÚMEROS DE LÍNEA (El panel gris a la izquierda)
+# ÁREA DE NÚMEROS DE LÍNEA
 # =====================================================================
 class LineNumberArea(QWidget):
     def __init__(self, editor):
@@ -14,18 +15,16 @@ class LineNumberArea(QWidget):
         return QSize(self.code_editor.line_number_area_width(), 0)
 
     def paintEvent(self, event):
-        # Le dice al editor que dibuje los números en esta área
         self.code_editor.lineNumberAreaPaintEvent(event)
 
 # =====================================================================
-# EL EDITOR DE CÓDIGO PERSONALIZADO (Hereda de QPlainTextEdit)
+# EDITOR DE CÓDIGO PERSONALIZADO
 # =====================================================================
 class CodeEditor(QPlainTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.line_number_area = LineNumberArea(self)
 
-        # Conectamos eventos para que los números se actualicen al escribir o hacer scroll
         self.blockCountChanged.connect(self.update_line_number_area_width)
         self.updateRequest.connect(self.update_line_number_area)
         self.cursorPositionChanged.connect(self.highlight_current_line)
@@ -34,7 +33,6 @@ class CodeEditor(QPlainTextEdit):
         self.highlight_current_line()
 
     def line_number_area_width(self):
-        # Calcula cuánto espacio necesitamos según la cantidad de líneas (10, 100, 1000...)
         digits = 1
         max_value = max(1, self.blockCount())
         while max_value >= 10:
@@ -44,7 +42,6 @@ class CodeEditor(QPlainTextEdit):
         return space
 
     def update_line_number_area_width(self, _):
-        # Hace un margen a la izquierda del texto para que quepan los números
         self.setViewportMargins(self.line_number_area_width(), 0, 0, 0)
 
     def update_line_number_area(self, rect, dy):
@@ -61,11 +58,10 @@ class CodeEditor(QPlainTextEdit):
         self.line_number_area.setGeometry(QRect(cr.left(), cr.top(), self.line_number_area_width(), cr.height()))
 
     def highlight_current_line(self):
-        # Resalta la línea donde está el cursor
         extra_selections = []
         if not self.isReadOnly():
             selection = QTextEdit.ExtraSelection()
-            line_color = QColor("#2d2d30") # Color de resaltado sutil
+            line_color = QColor("#2d2d30")
             selection.format.setBackground(line_color)
             selection.format.setProperty(QTextFormat.FullWidthSelection, True)
             selection.cursor = self.textCursor()
@@ -74,9 +70,8 @@ class CodeEditor(QPlainTextEdit):
         self.setExtraSelections(extra_selections)
 
     def lineNumberAreaPaintEvent(self, event):
-        # Dibuja el fondo y los números
         painter = QPainter(self.line_number_area)
-        painter.fillRect(event.rect(), QColor("#1e1e1e")) # Fondo oscuro igual al editor
+        painter.fillRect(event.rect(), QColor("#1e1e1e"))
 
         block = self.firstVisibleBlock()
         block_number = block.blockNumber()
@@ -86,7 +81,7 @@ class CodeEditor(QPlainTextEdit):
         while block.isValid() and top <= event.rect().bottom():
             if block.isVisible() and bottom >= event.rect().top():
                 number = str(block_number + 1)
-                painter.setPen(QColor("#858585")) # Color grisáceo de los números
+                painter.setPen(QColor("#858585"))
                 painter.drawText(0, top, self.line_number_area.width() - 5,
                                  self.fontMetrics().height(),
                                  Qt.AlignRight | Qt.AlignVCenter, number)
@@ -95,9 +90,8 @@ class CodeEditor(QPlainTextEdit):
             bottom = top + round(self.blockBoundingRect(block).height())
             block_number += 1
 
-
 # =====================================================================
-# CLASES ADAPTADAS
+# GESTIÓN DE PESTAÑAS Y ARCHIVOS
 # =====================================================================
 class CodePage(QWidget):
     """Representa una sola pestaña/archivo abierto."""
@@ -108,20 +102,8 @@ class CodePage(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # !!! AQUÍ ESTÁ EL CAMBIO PRINCIPAL !!!
-        # En vez de usar QPlainTextEdit, usamos nuestra clase CodeEditor
         self.editor = CodeEditor()
         self.editor.setPlainText(content)
-
-        self.editor.setStyleSheet("""
-            QPlainTextEdit {
-                background-color: #1e1e1e;
-                color: #d4d4d4;
-                font-family: 'Consolas', monospace;
-                font-size: 14px;
-                border: none;
-            }
-        """)
 
         layout.addWidget(self.editor)
 

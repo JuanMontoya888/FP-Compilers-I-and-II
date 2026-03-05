@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 18.0.2, 2026-03-02T20:29:04. -->
+<!-- Written by QtCreator 18.0.2, 2026-03-04T19:14:51. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -213,7 +213,7 @@
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">codeEditorManager.py</value>
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/Juan/Documentos Desktop/UNI/Eighth Semester/Compiladores I/Project/FP-Compilers-I-and-II/Juan-Studio-Code/codeEditorManager.py</value>
-     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
      <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\Juan\Documentos Desktop\UNI\Eighth Semester\Compiladores I\Project\FP-Compilers-I-and-II\Juan-Studio-Code\codeEditorManager.py</value>
      <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
@@ -233,7 +233,7 @@
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">shortcuts.py</value>
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/Juan/Documentos Desktop/UNI/Eighth Semester/Compiladores I/Project/FP-Compilers-I-and-II/Juan-Studio-Code/shortcuts.py</value>
-     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
      <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\Juan\Documentos Desktop\UNI\Eighth Semester\Compiladores I\Project\FP-Compilers-I-and-II\Juan-Studio-Code\shortcuts.py</value>
      <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
@@ -253,7 +253,7 @@
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">terminalManager.py</value>
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/Juan/Documentos Desktop/UNI/Eighth Semester/Compiladores I/Project/FP-Compilers-I-and-II/Juan-Studio-Code/terminalManager.py</value>
-     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
      <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\Juan\Documentos Desktop\UNI\Eighth Semester\Compiladores I\Project\FP-Compilers-I-and-II\Juan-Studio-Code\terminalManager.py</value>
      <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
@@ -374,7 +374,7 @@
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">codeEditorManager.py</value>
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/Juan/Documentos Desktop/UNI/Eighth Semester/Compiladores I/Project/FP-Compilers-I-and-II/Juan-Studio-Code/codeEditorManager.py</value>
-     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
      <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\Juan\Documentos Desktop\UNI\Eighth Semester\Compiladores I\Project\FP-Compilers-I-and-II\Juan-Studio-Code\codeEditorManager.py</value>
      <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
@@ -394,7 +394,7 @@
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">shortcuts.py</value>
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/Juan/Documentos Desktop/UNI/Eighth Semester/Compiladores I/Project/FP-Compilers-I-and-II/Juan-Studio-Code/shortcuts.py</value>
-     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
      <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\Juan\Documentos Desktop\UNI\Eighth Semester\Compiladores I\Project\FP-Compilers-I-and-II\Juan-Studio-Code\shortcuts.py</value>
      <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
@@ -414,7 +414,7 @@
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">terminalManager.py</value>
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/Juan/Documentos Desktop/UNI/Eighth Semester/Compiladores I/Project/FP-Compilers-I-and-II/Juan-Studio-Code/terminalManager.py</value>
-     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
      <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\Juan\Documentos Desktop\UNI\Eighth Semester\Compiladores I\Project\FP-Compilers-I-and-II\Juan-Studio-Code\terminalManager.py</value>
      <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
@@ -510,7 +510,7 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">codeEditorManager.py</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/Juan/Documentos Desktop/UNI/Eighth Semester/Compiladores I/Project/FP-Compilers-I-and-II/Juan-Studio-Code/codeEditorManager.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\Juan\Documentos Desktop\UNI\Eighth Semester\Compiladores I\Project\FP-Compilers-I-and-II\Juan-Studio-Code\codeEditorManager.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
@@ -530,7 +530,7 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">shortcuts.py</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/Juan/Documentos Desktop/UNI/Eighth Semester/Compiladores I/Project/FP-Compilers-I-and-II/Juan-Studio-Code/shortcuts.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\Juan\Documentos Desktop\UNI\Eighth Semester\Compiladores I\Project\FP-Compilers-I-and-II\Juan-Studio-Code\shortcuts.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
@@ -550,7 +550,7 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">terminalManager.py</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/Juan/Documentos Desktop/UNI/Eighth Semester/Compiladores I/Project/FP-Compilers-I-and-II/Juan-Studio-Code/terminalManager.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\Juan\Documentos Desktop\UNI\Eighth Semester\Compiladores I\Project\FP-Compilers-I-and-II\Juan-Studio-Code\terminalManager.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
@@ -682,7 +682,7 @@
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">codeEditorManager.py</value>
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/Juan/Documentos Desktop/UNI/Eighth Semester/Compiladores I/Project/FP-Compilers-I-and-II/Juan-Studio-Code/codeEditorManager.py</value>
-     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
      <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\Juan\Documentos Desktop\UNI\Eighth Semester\Compiladores I\Project\FP-Compilers-I-and-II\Juan-Studio-Code\codeEditorManager.py</value>
      <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
@@ -702,7 +702,7 @@
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">shortcuts.py</value>
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/Juan/Documentos Desktop/UNI/Eighth Semester/Compiladores I/Project/FP-Compilers-I-and-II/Juan-Studio-Code/shortcuts.py</value>
-     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
      <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\Juan\Documentos Desktop\UNI\Eighth Semester\Compiladores I\Project\FP-Compilers-I-and-II\Juan-Studio-Code\shortcuts.py</value>
      <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
@@ -722,7 +722,7 @@
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">terminalManager.py</value>
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/Juan/Documentos Desktop/UNI/Eighth Semester/Compiladores I/Project/FP-Compilers-I-and-II/Juan-Studio-Code/terminalManager.py</value>
-     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
      <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\Juan\Documentos Desktop\UNI\Eighth Semester\Compiladores I\Project\FP-Compilers-I-and-II\Juan-Studio-Code\terminalManager.py</value>
      <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
@@ -817,7 +817,7 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">codeEditorManager.py</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/Juan/Documentos Desktop/UNI/Eighth Semester/Compiladores I/Project/FP-Compilers-I-and-II/Juan-Studio-Code/codeEditorManager.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\Juan\Documentos Desktop\UNI\Eighth Semester\Compiladores I\Project\FP-Compilers-I-and-II\Juan-Studio-Code\codeEditorManager.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
@@ -837,7 +837,7 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">shortcuts.py</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/Juan/Documentos Desktop/UNI/Eighth Semester/Compiladores I/Project/FP-Compilers-I-and-II/Juan-Studio-Code/shortcuts.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\Juan\Documentos Desktop\UNI\Eighth Semester\Compiladores I\Project\FP-Compilers-I-and-II\Juan-Studio-Code\shortcuts.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
@@ -857,7 +857,7 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">terminalManager.py</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/Juan/Documentos Desktop/UNI/Eighth Semester/Compiladores I/Project/FP-Compilers-I-and-II/Juan-Studio-Code/terminalManager.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\Juan\Documentos Desktop\UNI\Eighth Semester\Compiladores I\Project\FP-Compilers-I-and-II\Juan-Studio-Code\terminalManager.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
