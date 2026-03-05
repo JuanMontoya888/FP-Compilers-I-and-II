@@ -27,7 +27,7 @@ class TreeManager:
         file_path = self.model.filePath(index)
         if os.path.isfile(file_path):
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, 'r', encoding='latin-1') as f:
                     content = f.read()
                     file_name = self.model.fileName(index)
                     self.editor_manager.add_new_page(file_name, content, file_path)

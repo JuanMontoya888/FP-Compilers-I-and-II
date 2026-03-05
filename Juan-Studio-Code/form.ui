@@ -192,58 +192,27 @@ QToolButton:hover {
 QToolButton:checked {
     border-left: 2px solid #007acc; 
     background-color: #1e1e1e;
+}
+/* --- BARRA DE ESTADO DEL EDITOR (Ln, Col, UTF-8) --- */
+QWidget#editorStatusBar {
+    background-color: #1e1e1e; /* Mismo fondo que el editor de código */
+    border-top: 1px solid #2d2d2d; /* Línea divisoria súper fina y elegante */
+}
+
+QWidget#editorStatusBar QLabel {
+    color: #858585; /* Gris tenue en lugar de blanco para no distraer la vista */
+    font-family: &quot;Segoe UI&quot;, &quot;San Francisco&quot;, sans-serif;
+    font-size: 11px;
+    padding: 2px 6px;
+}
+
+QWidget#editorStatusBar QLabel:hover {
+    background-color: #2d2d2d; /* Fondo gris sutil al pasar el mouse */
+    color: #cccccc; /* El texto se aclara ligeramente para dar feedback interactivo */
+    border-radius: 3px;
 }</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
-   <item row="0" column="7">
-    <widget class="QToolButton" name="runButton">
-     <property name="text">
-      <string>Run</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="3">
-    <widget class="QToolButton" name="viewButton">
-     <property name="text">
-      <string>View</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="1">
-    <widget class="QToolButton" name="fileButton">
-     <property name="text">
-      <string>File</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="9">
-    <widget class="QToolButton" name="toolsButton">
-     <property name="text">
-      <string>...</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="5">
-    <widget class="QToolButton" name="toolButton">
-     <property name="text">
-      <string>Window</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="6">
-    <widget class="QToolButton" name="goButton">
-     <property name="text">
-      <string>Go</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="4">
-    <widget class="QToolButton" name="selButton">
-     <property name="text">
-      <string>Selection</string>
-     </property>
-    </widget>
-   </item>
    <item row="0" column="2">
     <widget class="QToolButton" name="editButton">
      <property name="text">
@@ -251,30 +220,17 @@ QToolButton:checked {
      </property>
     </widget>
    </item>
-   <item row="1" column="1" colspan="12">
-    <widget class="QSplitter" name="splitter">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
+   <item row="0" column="4">
+    <widget class="QToolButton" name="toolsButton">
+     <property name="text">
+      <string>...</string>
      </property>
-     <widget class="QTreeView" name="treeView">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-     </widget>
-     <widget class="QTabWidget" name="tabWidget">
-      <property name="currentIndex">
-       <number>-1</number>
-      </property>
-     </widget>
     </widget>
    </item>
-   <item row="0" column="8">
-    <widget class="QToolButton" name="terminalButton">
+   <item row="0" column="1">
+    <widget class="QToolButton" name="fileButton">
      <property name="text">
-      <string>Terminal</string>
+      <string>File</string>
      </property>
     </widget>
    </item>
@@ -336,6 +292,33 @@ QToolButton:checked {
       </spacer>
      </item>
     </layout>
+   </item>
+   <item row="0" column="3">
+    <widget class="QToolButton" name="terminalButton">
+     <property name="text">
+      <string>Terminal</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1" colspan="7">
+    <widget class="QSplitter" name="splitter">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <widget class="QTreeView" name="treeView">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+     </widget>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>-1</number>
+      </property>
+     </widget>
+    </widget>
    </item>
   </layout>
  </widget>
