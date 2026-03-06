@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'form.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.1
+## Created by: Qt User Interface Compiler version 6.10.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -25,6 +25,9 @@ class Ui_Widget(object):
             Widget.setObjectName(u"Widget")
         Widget.setEnabled(True)
         Widget.resize(800, 600)
+        icon = QIcon()
+        icon.addFile(u"logoJSC.ico", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        Widget.setWindowIcon(icon)
         Widget.setStyleSheet(u"/* --- ESTILOS GENERALES --- */\n"
 "QWidget {\n"
 "    background-color: #1e1e1e;\n"

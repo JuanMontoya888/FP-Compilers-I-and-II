@@ -16,6 +16,10 @@
   <property name="windowTitle">
    <string>Juan Studio Code</string>
   </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>logoJSC.ico</normaloff>logoJSC.ico</iconset>
+  </property>
   <property name="styleSheet">
    <string notr="true">/* --- ESTILOS GENERALES --- */
 QWidget {
