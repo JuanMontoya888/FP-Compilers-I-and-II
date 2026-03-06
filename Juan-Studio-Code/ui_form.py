@@ -230,13 +230,40 @@ class Ui_Widget(object):
 
         self.gridLayout_2.addWidget(self.fileButton, 0, 1, 1, 1)
 
-        self.terminalButton = QToolButton(Widget)
-        self.terminalButton.setObjectName(u"terminalButton")
+        self.splitter = QSplitter(Widget)
+        self.splitter.setObjectName(u"splitter")
+        self.splitter.setOrientation(Qt.Orientation.Horizontal)
+        self.treeView = QTreeView(self.splitter)
+        self.treeView.setObjectName(u"treeView")
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.treeView.sizePolicy().hasHeightForWidth())
+        self.treeView.setSizePolicy(sizePolicy)
+        self.splitter.addWidget(self.treeView)
+        self.tabWidget = QTabWidget(self.splitter)
+        self.tabWidget.setObjectName(u"tabWidget")
+        self.splitter.addWidget(self.tabWidget)
 
-        self.gridLayout_2.addWidget(self.terminalButton, 0, 4, 1, 1)
+        self.gridLayout_2.addWidget(self.splitter, 1, 1, 1, 8)
 
         self.verticalLayout = QVBoxLayout()
         self.verticalLayout.setObjectName(u"verticalLayout")
+        self.newDirectoryButton = QToolButton(Widget)
+        self.newDirectoryButton.setObjectName(u"newDirectoryButton")
+
+        self.verticalLayout.addWidget(self.newDirectoryButton)
+
+        self.saveAsFileButton = QToolButton(Widget)
+        self.saveAsFileButton.setObjectName(u"saveAsFileButton")
+
+        self.verticalLayout.addWidget(self.saveAsFileButton)
+
+        self.saveFileButton = QToolButton(Widget)
+        self.saveFileButton.setObjectName(u"saveFileButton")
+
+        self.verticalLayout.addWidget(self.saveFileButton)
+
         self.lexicoButton = QToolButton(Widget)
         self.lexicoButton.setObjectName(u"lexicoButton")
 
@@ -257,6 +284,11 @@ class Ui_Widget(object):
 
         self.verticalLayout.addWidget(self.codIntButton)
 
+        self.tablaSimbolosButton = QToolButton(Widget)
+        self.tablaSimbolosButton.setObjectName(u"tablaSimbolosButton")
+
+        self.verticalLayout.addWidget(self.tablaSimbolosButton)
+
         self.runButton_ = QToolButton(Widget)
         self.runButton_.setObjectName(u"runButton_")
 
@@ -274,37 +306,25 @@ class Ui_Widget(object):
 
         self.gridLayout_2.addLayout(self.verticalLayout, 0, 0, 2, 1)
 
+        self.terminalButton = QToolButton(Widget)
+        self.terminalButton.setObjectName(u"terminalButton")
+
+        self.gridLayout_2.addWidget(self.terminalButton, 0, 4, 1, 1)
+
         self.toolsButton = QToolButton(Widget)
         self.toolsButton.setObjectName(u"toolsButton")
 
         self.gridLayout_2.addWidget(self.toolsButton, 0, 5, 1, 1)
 
-        self.splitter = QSplitter(Widget)
-        self.splitter.setObjectName(u"splitter")
-        self.splitter.setOrientation(Qt.Orientation.Horizontal)
-        self.treeView = QTreeView(self.splitter)
-        self.treeView.setObjectName(u"treeView")
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.treeView.sizePolicy().hasHeightForWidth())
-        self.treeView.setSizePolicy(sizePolicy)
-        self.splitter.addWidget(self.treeView)
-        self.tabWidget = QTabWidget(self.splitter)
-        self.tabWidget.setObjectName(u"tabWidget")
-        self.splitter.addWidget(self.tabWidget)
+        self.compileButton = QToolButton(Widget)
+        self.compileButton.setObjectName(u"compileButton")
 
-        self.gridLayout_2.addWidget(self.splitter, 1, 1, 1, 8)
+        self.gridLayout_2.addWidget(self.compileButton, 0, 3, 1, 1)
 
         self.editButton = QToolButton(Widget)
         self.editButton.setObjectName(u"editButton")
 
         self.gridLayout_2.addWidget(self.editButton, 0, 2, 1, 1)
-
-        self.compileButton = QToolButton(Widget)
-        self.compileButton.setObjectName(u"compileButton")
-
-        self.gridLayout_2.addWidget(self.compileButton, 0, 3, 1, 1)
 
 
         self.retranslateUi(Widget)
@@ -318,15 +338,19 @@ class Ui_Widget(object):
     def retranslateUi(self, Widget):
         Widget.setWindowTitle(QCoreApplication.translate("Widget", u"Juan Studio Code", None))
         self.fileButton.setText(QCoreApplication.translate("Widget", u"File", None))
-        self.terminalButton.setText(QCoreApplication.translate("Widget", u"Terminal", None))
+        self.newDirectoryButton.setText(QCoreApplication.translate("Widget", u"...", None))
+        self.saveAsFileButton.setText(QCoreApplication.translate("Widget", u"...", None))
+        self.saveFileButton.setText(QCoreApplication.translate("Widget", u"...", None))
         self.lexicoButton.setText(QCoreApplication.translate("Widget", u"...", None))
         self.sintacticoButton.setText(QCoreApplication.translate("Widget", u"...", None))
         self.semanticoButton.setText(QCoreApplication.translate("Widget", u"...", None))
         self.codIntButton.setText(QCoreApplication.translate("Widget", u"...", None))
+        self.tablaSimbolosButton.setText(QCoreApplication.translate("Widget", u"...", None))
         self.runButton_.setText(QCoreApplication.translate("Widget", u"...", None))
         self.errorButton.setText(QCoreApplication.translate("Widget", u"...", None))
+        self.terminalButton.setText(QCoreApplication.translate("Widget", u"Terminal", None))
         self.toolsButton.setText(QCoreApplication.translate("Widget", u"...", None))
-        self.editButton.setText(QCoreApplication.translate("Widget", u"Edit", None))
         self.compileButton.setText(QCoreApplication.translate("Widget", u"Compile", None))
+        self.editButton.setText(QCoreApplication.translate("Widget", u"Edit", None))
     # retranslateUi
 

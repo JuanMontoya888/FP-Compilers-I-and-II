@@ -77,6 +77,18 @@ class Widget(QWidget):
         self.ui.errorButton.setIcon(QIcon(os.path.join(icons_dir, "bug.svg")))
         self.ui.errorButton.setIconSize(icon_size)
 
+        self.ui.tablaSimbolosButton.setIcon(QIcon(os.path.join(icons_dir, "table.svg")))
+        self.ui.tablaSimbolosButton.setIconSize(icon_size)
+
+        self.ui.saveAsFileButton.setIcon(QIcon(os.path.join(icons_dir, "save_as.svg")))
+        self.ui.saveAsFileButton.setIconSize(icon_size)
+
+        self.ui.saveFileButton.setIcon(QIcon(os.path.join(icons_dir, "save.svg")))
+        self.ui.saveFileButton.setIconSize(icon_size)
+
+        self.ui.newDirectoryButton.setIcon(QIcon(os.path.join(icons_dir, "new_folder.svg")))
+        self.ui.newDirectoryButton.setIconSize(icon_size)
+
     # ============================================================
     # MÉTODO: setup_components
     # Qué hace: Instancia los "Managers" o cerebros lógicos del programa.
@@ -144,6 +156,13 @@ class Widget(QWidget):
         self.ui.sintacticoButton.clicked.connect(lambda: self.open_bottom_panel(2))# Abre Análisis Sintáctico
         self.ui.semanticoButton.clicked.connect(lambda: self.open_bottom_panel(3)) # Abre Análisis Semántico
         self.ui.codIntButton.clicked.connect(lambda: self.open_bottom_panel(4))    # Abre Código Intermedio
+        self.ui.tablaSimbolosButton.clicked.connect(lambda: self.open_bottom_panel(5))    # Abre Tabla de Símbolos
+        self.ui.errorButton.clicked.connect(lambda: self.open_bottom_panel(6))    # Abre Errores
+
+        self.ui.saveAsFileButton.clicked.connect(self.explorer.save_as_file_action)
+        self.ui.saveFileButton.clicked.connect(self.explorer.save_file_action)
+        self.ui.newDirectoryButton.clicked.connect(self.explorer.open_dir_action)
+
 
     # ============================================================
     # MÉTODO: open_bottom_panel

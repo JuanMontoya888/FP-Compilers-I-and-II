@@ -140,17 +140,20 @@ class TreeManager:
         lexico_act = QAction("Análisis Léxico", self.btn_compile)
         sintactico_act = QAction("Análisis Sintáctico", self.btn_compile)
         semantico_act = QAction("Análisis Semántico", self.btn_compile)
+        codigo_intermedio = QAction("Código Intermedio", self.btn_compile)
         ejecutar_act = QAction("Ejecutar\tF5", self.btn_compile)
 
         # Conexión mediante lambdas para controlar el índice del panel inferior
         lexico_act.triggered.connect(lambda: self.open_terminal_tab(1))
         sintactico_act.triggered.connect(lambda: self.open_terminal_tab(2))
         semantico_act.triggered.connect(lambda: self.open_terminal_tab(3))
+        codigo_intermedio.triggered.connect(lambda: self.open_terminal_tab(4))
         ejecutar_act.triggered.connect(lambda: self.open_terminal_tab(0))
 
         self.menu_compile.addAction(lexico_act)
         self.menu_compile.addAction(sintactico_act)
         self.menu_compile.addAction(semantico_act)
+        self.menu_compile.addAction(codigo_intermedio)
         self.menu_compile.addSeparator()
         self.menu_compile.addAction(ejecutar_act)
         self.btn_compile.setMenu(self.menu_compile)

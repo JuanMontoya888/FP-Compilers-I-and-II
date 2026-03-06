@@ -50,6 +50,15 @@ class TerminalManager(QTabWidget):
         self.setup_analysis_tab(self.codigo_intermedio, "Esperando ejecución para código intermedio...\n")
         self.addTab(self.codigo_intermedio, "Código Intermedio")
 
+        self.tabla = QPlainTextEdit()
+        self.setup_analysis_tab(self.tabla, "Tabla de Símbolos...\n")
+        self.addTab(self.tabla, "Tabla de Símbolos")
+
+        self.errores = QPlainTextEdit()
+        self.setup_analysis_tab(self.errores, "Errores de código...\n")
+        self.addTab(self.errores, "Errores")
+
+
         # Inyección de lógica personalizada para el manejo de teclado
         self.terminal_edit.keyPressEvent = self.terminal_keyPressEvent
 

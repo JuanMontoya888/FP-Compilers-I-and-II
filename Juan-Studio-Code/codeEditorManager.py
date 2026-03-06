@@ -47,6 +47,10 @@ class CodeEditor(QPlainTextEdit):
         super().__init__(parent)
         self.line_number_area = LineNumberArea(self)
 
+        # CONFIGURACIÓN DE VISUALIZACIÓN: Desactiva el ajuste de línea (Line Wrap)
+        # Esto asegura que cada línea de código se mantenga en una sola fila física.
+        self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+
         # Conexión de señales internas para la reactividad de la interfaz
         self.blockCountChanged.connect(self.update_line_number_area_width)
         self.updateRequest.connect(self.update_line_number_area)
@@ -227,7 +231,6 @@ class CodeEditorManager:
         title = self.tabs.tabText(index)
 
         if title.endswith("*"):
-            # Lógica de diálogo de confirmación para archivos modificados
             respuesta = QMessageBox.question(
                 self.tabs,
                 "Guardar cambios",
@@ -263,7 +266,6 @@ class CodeEditorManager:
                     with open(current_page.file_path, 'w', encoding='latin-1') as f:
                         f.write(content)
 
-                    # Limpieza del indicador de cambios tras guardado exitoso
                     if title.endswith("*"):
                         self.tabs.setTabText(current_index, title[:-1])
 
@@ -297,7 +299,6 @@ class CodeEditorManager:
                     with open(file_path, 'w', encoding='latin-1') as f:
                         f.write(content)
 
-                    # Sincronización del estado interno con la nueva ubicación física
                     current_page.file_path = file_path
                     new_name = os.path.basename(file_path)
                     self.tabs.setTabText(current_index, new_name)
