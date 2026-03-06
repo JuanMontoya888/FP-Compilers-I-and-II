@@ -16,6 +16,7 @@ class Shortcuts:
         # ARCHIVOS Y CARPETAS
         # ==========================================
         QShortcut(QKeySequence("Ctrl+S"), self.parent).activated.connect(self.editor.save_current_page)
+        QShortcut(QKeySequence("Ctrl+Shift+S"), self.parent).activated.connect(self.editor.save_as_current_page)
         QShortcut(QKeySequence("Ctrl+N"), self.parent).activated.connect(self.tree.new_file_action)
         QShortcut(QKeySequence("Ctrl+O"), self.parent).activated.connect(self.tree.open_file_action)
         QShortcut(QKeySequence("Ctrl+Shift+O"), self.parent).activated.connect(self.tree.open_dir_action)

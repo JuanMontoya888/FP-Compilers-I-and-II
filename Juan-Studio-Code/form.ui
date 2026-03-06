@@ -213,24 +213,17 @@ QWidget#editorStatusBar QLabel:hover {
 }</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
-   <item row="0" column="2">
-    <widget class="QToolButton" name="editButton">
-     <property name="text">
-      <string>Edit</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="4">
-    <widget class="QToolButton" name="toolsButton">
-     <property name="text">
-      <string>...</string>
-     </property>
-    </widget>
-   </item>
    <item row="0" column="1">
     <widget class="QToolButton" name="fileButton">
      <property name="text">
       <string>File</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="4">
+    <widget class="QToolButton" name="terminalButton">
+     <property name="text">
+      <string>Terminal</string>
      </property>
     </widget>
    </item>
@@ -293,14 +286,14 @@ QWidget#editorStatusBar QLabel:hover {
      </item>
     </layout>
    </item>
-   <item row="0" column="3">
-    <widget class="QToolButton" name="terminalButton">
+   <item row="0" column="5">
+    <widget class="QToolButton" name="toolsButton">
      <property name="text">
-      <string>Terminal</string>
+      <string>...</string>
      </property>
     </widget>
    </item>
-   <item row="1" column="1" colspan="7">
+   <item row="1" column="1" colspan="8">
     <widget class="QSplitter" name="splitter">
      <property name="orientation">
       <enum>Qt::Orientation::Horizontal</enum>
@@ -318,6 +311,20 @@ QWidget#editorStatusBar QLabel:hover {
        <number>-1</number>
       </property>
      </widget>
+    </widget>
+   </item>
+   <item row="0" column="2">
+    <widget class="QToolButton" name="editButton">
+     <property name="text">
+      <string>Edit</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="3">
+    <widget class="QToolButton" name="compileButton">
+     <property name="text">
+      <string>Compile</string>
+     </property>
     </widget>
    </item>
   </layout>
