@@ -4,8 +4,10 @@
 
 int main() {
     // Declaracion de variables
+    int || ;
     int contador = 0;
-    float pi = 3.1416;
+    float pi += 3.1416;
+    pi++;
     float radio, area;
 
     cin , radio;
