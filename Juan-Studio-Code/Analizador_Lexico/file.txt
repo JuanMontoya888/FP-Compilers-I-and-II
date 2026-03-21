@@ -1,0 +1,31 @@
+/* Archivo de prueba para el Analizador Lexico
+   Proyecto Compiladores 2026
+*/
+
+int main() {
+    // Declaracion de variables
+    int contador = 0;
+    float pi = 3.1416;
+    float radio, area;
+
+    cin , radio;
+
+    area = pi * (radio ^ 2);
+
+    if (area >= 100.5 && radio != 0) {
+        contador++;
+    } else {
+        contador--;
+    }
+
+    do {
+        contador = contador + 1 % 5;
+    } while (contador < 10 || !contador);
+
+    switch (contador) {
+        case 1:
+            cout , "El area es pequeña";
+    }
+
+    'F'
+}
