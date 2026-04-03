@@ -1,0 +1,7 @@
+TOKEN               	LEXEMA
+---------------------------------------------
+INT                 	int
+ID                  	hola
+ASSIGN              	=
+STRING              	"pendejos"
+ENDFILE             	EOF

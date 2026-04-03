@@ -58,6 +58,7 @@ class CodeEditor(QPlainTextEdit):
 
         self.update_line_number_area_width(0)
         self.highlight_current_line()
+        self.tree_manager=None
 
     #
 
@@ -197,16 +198,38 @@ class CodePage(QWidget):
 # cambios (estado modificado '*') de todas las pestañas.
 # ============================================================
 class CodeEditorManager:
-    def __init__(self, tab_widget):
+    def __init__(self, tab_widget, main_app):
         self.tabs = tab_widget
         self.tabs.setTabsClosable(True)
         self.tabs.tabCloseRequested.connect(self.close_page)
+        self.main_app = main_app
+
+        self.tabs.currentChanged.connect(self.update_context_from_tab)
+
+    def update_context_from_tab(self, index):
+            """
+            Qué hace: Mantiene a la app principal informada de dónde estamos.
+            Cada que cambias de pestaña o abres un archivo, el path global se actualiza.
+            """
+            if index >= 0:
+                page = self.tabs.widget(index)
+                # Solo actualizamos si la pestaña actual tiene un archivo guardado/abierto
+                if hasattr(page, 'file_path') and page.file_path:
+                    self.main_app.current_path = os.path.dirname(page.file_path)
+                    self.main_app.current_file_selected = page.file_path
 
     def add_new_page(self, title, content, file_path):
         """
         Qué hace: Instancia una nueva 'CodePage' y la añade al control de pestañas.
         Interacción: Vincula la señal 'textChanged' para detectar ediciones futuras.
         """
+        # Se revisa que no exista alguna abierta con el mismo nombre
+        for i in range(self.tabs.count()):
+            page = self.tabs.widget(i) # get page
+            if page.file_path == file_path and file_path != "":
+                self.tabs.setCurrentIndex(i)
+                return
+
         new_page = CodePage(content, file_path)
         index = self.tabs.addTab(new_page, title)
         self.tabs.setCurrentIndex(index)
@@ -260,6 +283,7 @@ class CodeEditorManager:
             current_page = self.tabs.widget(current_index)
             title = self.tabs.tabText(current_index)
 
+
             if current_page.file_path:
                 try:
                     content = current_page.editor.toPlainText()
@@ -268,6 +292,10 @@ class CodeEditorManager:
 
                     if title.endswith("*"):
                         self.tabs.setTabText(current_index, title[:-1])
+
+                    # Actualizamos las variables globales de la app
+                    self.main_app.current_path = os.path.dirname(current_page.file_path)
+                    self.main_app.current_file_selected = current_page.file_path
 
                     QMessageBox.information(self.tabs, "Éxito", "Archivo guardado correctamente.")
                 except Exception as e:
@@ -284,7 +312,8 @@ class CodeEditorManager:
         current_index = self.tabs.currentIndex()
         if current_index >= 0:
             current_page = self.tabs.widget(current_index)
-            start_path = current_page.file_path if current_page.file_path else os.getcwd()
+
+            start_path = current_page.file_path or self.main_app.current_path
 
             file_path, _ = QFileDialog.getSaveFileName(
                 self.tabs,
@@ -302,6 +331,10 @@ class CodeEditorManager:
                     current_page.file_path = file_path
                     new_name = os.path.basename(file_path)
                     self.tabs.setTabText(current_index, new_name)
+
+                    self.main_app.current_path = os.path.dirname(file_path)
+                    if hasattr(self.main_app, 'explorer'):
+                        self.main_app.explorer.tree.setRootIndex(self.main_app.explorer.model.index(self.main_app.current_path))
 
                     QMessageBox.information(self.tabs, "Éxito", f"Archivo guardado como:\n{new_name}")
                 except Exception as e:

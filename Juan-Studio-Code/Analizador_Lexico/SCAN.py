@@ -29,6 +29,9 @@ class SCANNER():
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
                 self.source = file.read()
+        except UnicodeDecodeError:
+            with open(file_path, 'r', encoding='latin-1') as file:
+                self.source = file.read()
         except FileNotFoundError:
             print(f"Error: File '{file_path}' was not found")
             self.source = ""

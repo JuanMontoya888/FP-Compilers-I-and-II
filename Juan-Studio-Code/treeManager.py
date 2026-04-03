@@ -29,17 +29,17 @@ class TreeManager:
     # y 'terminal_manager' para permitir que el explorador dispare
     # acciones en otros subsistemas.
     # ============================================================
-    def __init__(self, tree_view, ui, editor_manager, terminal_manager):
+    def __init__(self, tree_view, ui, editor_manager, terminal_manager, main_app):
         self.tree = tree_view
         self.editor_manager = editor_manager
         self.terminal_manager = terminal_manager
+        self.main_app = main_app
 
         # Configuración del modelo de archivos del sistema
         self.model = QFileSystemModel()
-        path_gen = QDir.rootPath()
-        self.model.setRootPath(path_gen)
+        self.model.setRootPath(self.main_app.current_path)
         self.tree.setModel(self.model)
-        self.tree.setRootIndex(self.model.index(path_gen))
+        self.tree.setRootIndex(self.model.index(self.main_app.current_path))
 
         # Ocultamos columnas técnicas para mantener una UI limpia de explorador
         self.tree.setColumnHidden(1, True)
@@ -71,6 +71,7 @@ class TreeManager:
     # ============================================================
     def on_file_selected(self, index: QModelIndex):
         file_path = self.model.filePath(index)
+        self.main_app.current_file_selected = file_path
         if os.path.isfile(file_path):
             try:
                 # Apertura de archivo con manejo de codificación específica
@@ -250,7 +251,8 @@ class TreeManager:
 
     def open_file_action(self):
         """Despliega el explorador nativo para importar un archivo al entorno."""
-        file_path, _ = QFileDialog.getOpenFileName(None, 'Select a file', os.getcwd(), "All Files (*)")
+
+        file_path, _ = QFileDialog.getOpenFileName(None, 'Select a file', self.main_app.current_path, "All Files (*)")
         if file_path:
             try:
                 with open(file_path, 'r', encoding='latin-1') as f:
@@ -268,6 +270,7 @@ class TreeManager:
 
     def open_dir_action(self):
         """Actualiza la raíz del explorador lateral a un nuevo directorio."""
-        dir_path = QFileDialog.getExistingDirectory(None, 'Open Directory', os.getcwd())
+
+        dir_path = QFileDialog.getExistingDirectory(None, 'Open Directory', self.main_app.current_path)
         if dir_path:
             self.tree.setRootIndex(self.model.index(dir_path))

@@ -39,6 +39,10 @@ class Widget(QWidget):
         self.ui = Ui_Widget()
         self.ui.setupUi(self)
 
+        # creamos una instancia del current path
+        self.current_path = os.getcwd()
+        self.current_file_selected = None
+
         # Mantenemos el __init__ compacto llamando a los métodos de configuración
         self.setup_icons()
         self.setup_layout()
@@ -89,6 +93,26 @@ class Widget(QWidget):
         self.ui.newDirectoryButton.setIcon(QIcon(os.path.join(icons_dir, "new_folder.svg")))
         self.ui.newDirectoryButton.setIconSize(icon_size)
 
+        # ==========================================
+        # Asignación de texto Flotante para cada botón
+        # ==========================================
+
+        # Archivos y Directorios
+        self.ui.saveFileButton.setToolTip("Save file")
+        self.ui.saveAsFileButton.setToolTip("Save file as...")
+        self.ui.newDirectoryButton.setToolTip("Open directory")
+
+        # Ejecución y Análisis
+        self.ui.runButton_.setToolTip("Run / Open Terminal")
+        self.ui.lexicoButton.setToolTip("Lexical Analysis")
+        self.ui.sintacticoButton.setToolTip("Syntax Analysis")
+        self.ui.semanticoButton.setToolTip("Semantic Analysis")
+        self.ui.codIntButton.setToolTip("Intermediate Code")
+
+        # Herramientas y Debugging
+        self.ui.tablaSimbolosButton.setToolTip("View Symbol Table")
+        self.ui.errorButton.setToolTip("View Error Console")
+
     # ============================================================
     # MÉTODO: setup_components
     # Qué hace: Instancia los "Managers" o cerebros lógicos del programa.
@@ -100,13 +124,16 @@ class Widget(QWidget):
     def setup_components(self):
         """ ------ Configuraciones de componentes y atajos ------ """
         # Gestión de documentos y pestañas
-        self.editor_manager = CodeEditorManager(self.ui.tabWidget)
+        self.editor_manager = CodeEditorManager(self.ui.tabWidget, self)
 
         # Gestión del sistema de archivos vinculado a la terminal y editor
-        self.explorer = TreeManager(self.ui.treeView, self.ui, self.editor_manager, self.terminal_manager)
+        self.explorer = TreeManager(self.ui.treeView, self.ui, self.editor_manager, self.terminal_manager, self)
 
         # Registro de manejadores de eventos de teclado globales
         self.atajos = Shortcuts(self, self.explorer, self.editor_manager)
+
+        self.editor_manager.tree_manager = self.explorer
+
 
     # ============================================================
     # MÉTODO: setup_layout
@@ -173,6 +200,11 @@ class Widget(QWidget):
     # ============================================================
     def open_bottom_panel(self, tab_index):
         """Muestra el panel inferior y selecciona la pestaña indicada."""
+        # dependiendo de el numero, ajecutaremos la accion para analisis
+        match(tab_index):
+                case 1:
+                        self.terminal_manager.execute_lexical(self.current_file_selected)
+
         self.terminal_manager.setCurrentIndex(tab_index)
         if not self.terminal_manager.isVisible():
             self.terminal_manager.show()
