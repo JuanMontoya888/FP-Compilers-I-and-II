@@ -4,21 +4,28 @@ from PySide6.QtGui import QTextCursor
 import os
 import sys
 
+# =====================================================================
+# BACKEND MODULE INTEGRATION
+# This section ensures that the 'Analizador_Lexico' directory is
+# accessible to the Python interpreter, allowing the import of the
+# custom SCANNER component.
+# =====================================================================
 sys.path.append(os.path.join(os.getcwd(), 'Analizador_Lexico'))
 from SCAN import SCANNER
 
 
 # =====================================================================
-# HILO DE TRABAJO PARA LEXER: LexerWorker
-# Ejecuta el escáner en un núcleo separado del procesador.
+# MULTI-THREADING COMPONENT: LexerWorker
+# This class implements a worker thread to execute the lexical scanner
+# in a separate CPU core.
 #
-# Responsabilidades:
-# - Aislar la ejecución del analizador léxico de la UI principal.
-# - Prevenir bloqueos (congelamientos) en la interfaz durante el análisis.
-# - Emitir los resultados mediante señales de Qt al finalizar.
+# Responsibilities:
+# - Isolate heavy lexical analysis from the Main UI Thread.
+# - Prevent UI freezing/hanging during large file processing.
+# - Emit results via Qt Signals once the background task is complete.
 # =====================================================================
 class LexerWorker(QThread):
-    # Definimos una señal que enviará 2 textos al terminar: (resultado, error)
+    # Signal that sends two strings upon completion: (result_content, error_message)
     finished_signal = Signal(str, str)
 
     def __init__(self, source_code):
@@ -26,79 +33,77 @@ class LexerWorker(QThread):
         self.source_code = source_code
 
     # =====================================================================
-    # MÉTODO CORE: run
-    # Qué hace: Punto de entrada del hilo. Instancia el SCANNER y procesa
-    # el archivo fuente.
-    # Qué componentes usa: Clase SCANNER (del módulo SCAN), I/O de Python.
-    # Cómo interactúa: Al terminar, lee el archivo 'tokens.txt' generado
-    # por el SCANNER y emite la señal 'finished_signal' de vuelta al
-    # hilo principal de la UI.
+    # CORE EXECUTION METHOD: run
+    # What it does: Serves as the entry point for the worker thread.
+    # What components it uses: SCANNER class (from SCAN module) and File I/O.
+    # How it interacts: It instantiates the scanner, triggers the token
+    # generation, reads the resulting 'tokens.txt', and emits the
+    # finished_signal back to the Main UI.
     # =====================================================================
     def run(self):
-        """Este método se ejecuta en segundo plano automáticamente."""
+        """This method executes automatically in the background."""
         try:
-            # Instanciamos y ejecutamos el scanner
+            # Instantiate and execute the scanner logic
             scanner = SCANNER(self.source_code)
             scanner.get_token()
 
-            # Leemos el archivo resultante
+            # Read the resulting output file
             resultado_txt_path = "tokens.txt"
             if os.path.exists(resultado_txt_path):
                 with open(resultado_txt_path, 'r', encoding='utf-8') as f:
                     resultado = f.read()
-                # Enviamos el resultado con error vacío
+                # Emit successful result with an empty error string
                 self.finished_signal.emit(resultado, "")
             else:
-                self.finished_signal.emit("", "ERROR: El archivo tokens.txt no fue generado.")
+                self.finished_signal.emit("", "ERROR: The file 'tokens.txt' was not generated.")
         except Exception as e:
-            # Si algo explota, enviamos el error
+            # Catch unexpected exceptions and propagate the error message
             self.finished_signal.emit("", str(e))
 
 
-
 # =====================================================================
-# CLASE: TerminalManager (SISTEMA DE SALIDA Y CONSOLA INTERACTIVA)
-# Esta clase actúa como el componente de retroalimentación principal del IDE.
-# Hereda de QTabWidget para organizar la salida del compilador en
-# diferentes etapas lógicas (Terminal, Léxico, Sintáctico, etc.).
+# UI COMPONENT: TerminalManager (OUTPUT SYSTEM & INTERACTIVE CONSOLE)
+# This class serves as the primary feedback component for the IDE.
+# It inherits from QTabWidget to organize compiler output into
+# distinct logical stages (Terminal, Lexical, Syntactic, etc.).
 #
-# Arquitectura:
-# - Implementa una consola interactiva real mediante QProcess.
-# - Gestiona buffers de texto independientes para cada fase del análisis.
-# - Actúa como sumidero de datos (Data Sink) para los resultados del backend.
+# Architecture:
+# - Implements a real interactive console via QProcess.
+# - Manages independent text buffers for each compilation phase.
+# - Acts as a Data Sink for backend analysis results.
 # =====================================================================
 class TerminalManager(QTabWidget):
 
     # =====================================================================
-    # MÉTODO: __init__
-    # Qué hace: Constructor de la clase que inicializa la estructura de pestañas.
-    # Qué componentes usa: QPlainTextEdit para cada vista de salida.
-    # Cómo interactúa: Define el objeto 'bottomTabs' para la aplicación de
-    # estilos CSS y establece la pestaña interactiva principal (PowerShell).
-    # Configura las pestañas de lectura para las fases del compilador.
+    # METHOD: __init__
+    # What it does: Constructor that initializes the tab structure and consoles.
+    # What components it uses: QPlainTextEdit for each output view.
+    # How it interacts: Sets the 'bottomTabs' object name for CSS styling
+    # and initializes the main interactive shell (PowerShell) and
+    # read-only tabs for compiler analysis phases.
     # =====================================================================
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self.setObjectName("bottomTabs")
 
-        # Inicialización de la consola interactiva de sistema
+        # Initialize the interactive system terminal
         self.terminal_edit = QPlainTextEdit()
         self.setup_terminal()
         self.addTab(self.terminal_edit, "Terminal")
 
-        # Inicialización de vistas de solo lectura para el compilador
+        # Initialize read-only views for compiler stages
         self.lexico_output = QPlainTextEdit()
-        self.setup_analysis_tab(self.lexico_output, "Waiting for lexical analisis execution...\n")
-        self.addTab(self.lexico_output, "Lexical Analisis")
+        self.setup_analysis_tab(self.lexico_output, "Waiting for lexical analysis execution...\n")
+        self.addTab(self.lexico_output, "Lexical Analysis")
 
         self.sintactico_output = QPlainTextEdit()
-        self.setup_analysis_tab(self.sintactico_output, "Waiting for syntax analisis execution...\n")
-        self.addTab(self.sintactico_output, "Syntax Analisis")
+        self.setup_analysis_tab(self.sintactico_output, "Waiting for syntax analysis execution...\n")
+        self.addTab(self.sintactico_output, "Syntax Analysis")
 
         self.semantico_output = QPlainTextEdit()
-        self.setup_analysis_tab(self.semantico_output, "Waiting for semantic analisis execution...\n")
-        self.addTab(self.semantico_output, "Semantic Analisis")
+        self.setup_analysis_tab(self.semantico_output, "Waiting for semantic analysis execution...\n")
+        self.addTab(self.semantico_output, "Semantic Analysis")
 
         self.codigo_intermedio = QPlainTextEdit()
         self.setup_analysis_tab(self.codigo_intermedio, "Waiting for intermediate code execution...\n")
@@ -112,70 +117,69 @@ class TerminalManager(QTabWidget):
         self.setup_analysis_tab(self.errores, "Error Console...\n")
         self.addTab(self.errores, "Errors")
 
-
-        # Inyección de lógica personalizada para el manejo de teclado
+        # Inject custom keyboard handling logic
         self.terminal_edit.keyPressEvent = self.terminal_keyPressEvent
 
 
     # =====================================================================
-    # MÉTODO DE UTILIDAD: setup_analysis_tab
-    # Qué hace: Configura el estado inicial y permisos de las pestañas de análisis.
-    # Qué componentes usa: QPlainTextEdit (Widget de texto).
-    # Cómo interactúa: Bloquea la edición manual del usuario para proteger
-    # la integridad de los resultados generados por el compilador.
+    # UTILITY METHOD: setup_analysis_tab
+    # What it does: Configures the initial state and permissions of analysis tabs.
+    # What components it uses: QPlainTextEdit (Text widget).
+    # How it interacts: Locks manual user editing to protect the integrity
+    # of the data generated by the compiler.
     # =====================================================================
     def setup_analysis_tab(self, widget, initial_text):
-        """Aplica configuraciones de solo lectura a las pestañas de análisis."""
+        """Applies read-only configurations to the analysis tabs."""
         widget.setReadOnly(True)
         widget.appendPlainText(initial_text)
 
 
     # =====================================================================
-    # MÉTODO: setup_terminal (NÚCLEO DE PROCESAMIENTO INTERACTIVO)
-    # Qué hace: Spawnea un subproceso de sistema (PowerShell) y conecta los pipes.
-    # Qué componentes usa: QProcess, Pipes de Entrada/Salida Estándar.
-    # Cómo interactúa: Permite al IDE ejecutar comandos de consola como
-    # 'python' u 'openssl' integrando la terminal de Windows en la UI.
+    # METHOD: setup_terminal (INTERACTIVE PROCESSING CORE)
+    # What it does: Spawns a system sub-process (PowerShell) and connects pipes.
+    # What components it uses: QProcess, Standard Input/Output Pipes.
+    # How it interacts: Enables the IDE to run console commands like 'python'
+    # or 'openssl' by integrating the Windows shell directly into the UI.
     # =====================================================================
     def setup_terminal(self):
-        """Inicializa el proceso de PowerShell para la terminal principal."""
+        """Initializes the PowerShell process for the main terminal."""
         self.terminal_edit.setReadOnly(False)
 
-        # Configuración del motor de subprocesos asíncronos
+        # Asynchronous sub-process engine configuration
         self.process = QProcess(self)
         self.process.readyReadStandardOutput.connect(self.handle_stdout)
         self.process.readyReadStandardError.connect(self.handle_stderr)
 
         self.interactive_position = 0
 
-        # Inicio del shell con forzado de codificación UTF-8 para evitar caracteres erróneos
+        # Start shell with UTF-8 encoding forced to avoid encoding artifacts
         self.process.start("powershell.exe", ["-NoExit", "-Command", "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8"])
 
 
     # =====================================================================
-    # MÉTODOS DE LECTURA DE PIPES: handle_stdout / handle_stderr
-    # Qué hace: Escuchan y redirigen el flujo de datos del subproceso a la UI.
-    # Qué componentes usa: QProcess.readAllStandardOutput/Error, QTextCursor.
-    # Cómo interactúa: Actualiza la vista en tiempo real y mantiene el control
-    # de la 'posición interactiva' para proteger el historial de la terminal.
+    # PIPE READING METHODS: handle_stdout / handle_stderr
+    # What it does: Listens to and redirects the sub-process data flow to the UI.
+    # What components it uses: QProcess Standard Read methods, QTextCursor.
+    # How it interacts: Updates the view in real-time and maintains the
+    # 'interactive position' marker to protect terminal history.
     # =====================================================================
     def handle_stdout(self):
-        """Escribe la salida estándar de PowerShell en la interfaz."""
+        """Writes PowerShell standard output to the interface."""
         data = self.process.readAllStandardOutput()
         text = bytes(data).decode('utf-8', errors='replace')
 
-        # Gestión del cursor para auto-scroll y posicionamiento al final del buffer
+        # Cursor management for auto-scrolling and buffer positioning
         cursor = self.terminal_edit.textCursor()
         cursor.movePosition(QTextCursor.End)
         self.terminal_edit.setTextCursor(cursor)
         self.terminal_edit.insertPlainText(text)
 
-        # Actualización de la marca de agua para evitar ediciones en el historial
+        # Update watermark to prevent editing of previous shell history
         self.interactive_position = self.terminal_edit.textCursor().position()
         self.terminal_edit.ensureCursorVisible()
 
     def handle_stderr(self):
-        """Escribe los errores de PowerShell en la interfaz."""
+        """Writes PowerShell error stream to the interface."""
         data = self.process.readAllStandardError()
         text = bytes(data).decode('utf-8', errors='replace')
 
@@ -185,127 +189,127 @@ class TerminalManager(QTabWidget):
 
 
     # =====================================================================
-    # MÉTODO: terminal_keyPressEvent (INTERCEPTOR DE ENTRADA)
-    # Qué hace: Valida y procesa la entrada de teclado del usuario en la consola.
-    # Qué componentes usa: QKeyEvent, QProcess.write.
-    # Cómo interactúa: Implementa la lógica de 'Shell Emulator', enviando
-    # comandos al subproceso solo al presionar 'Enter' y bloqueando el
-    # borrado del prompt mediante la validación de 'interactive_position'.
+    # METHOD: terminal_keyPressEvent (INPUT INTERCEPTOR)
+    # What it does: Validates and processes user keyboard input in the console.
+    # What components it uses: QKeyEvent, QProcess.write.
+    # How it interacts: Implements 'Shell Emulator' logic, sending commands
+    # to the sub-process only on 'Enter' and blocking deletions beyond the
+    # current prompt via 'interactive_position' validation.
     # =====================================================================
     def terminal_keyPressEvent(self, event):
-        """Controla la entrada de teclado interactiva en la terminal."""
-        # Protección del prompt: evita borrar o mover el cursor a zonas de historial
+        """Controls interactive keyboard input in the terminal."""
+        # Prompt protection: prevents deleting or moving cursor into history zones
         if event.key() in (Qt.Key_Backspace, Qt.Key_Left):
             if self.terminal_edit.textCursor().position() <= self.interactive_position:
                 return
 
-        # Procesamiento de comandos al presionar Enter
+        # Process commands when Enter is pressed
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
             cursor = self.terminal_edit.textCursor()
             cursor.movePosition(QTextCursor.End)
             self.terminal_edit.setTextCursor(cursor)
 
-            # Extracción del texto ingresado por el usuario desde la última marca
+            # Extract user input text from the last watermark position
             cursor.setPosition(self.interactive_position, QTextCursor.KeepAnchor)
             command = cursor.selectedText().strip()
 
-            # Gestión de comandos internos de la interfaz (Clear)
+            # Handle internal UI commands (Clear Screen)
             if command.lower() in ['clear', 'cls']:
                 self.terminal_edit.clear()
                 self.process.write(b"\n")
                 return
 
-            cursor.clearSelection()
-            self.terminal_edit.setTextCursor(cursor)
-            self.terminal_edit.insertPlainText("\n")
+            # ---> LA MAGIA SUCEDE AQUÍ <---
+            # Eliminamos lo que el usuario escribió en la UI para evitar el duplicado.
+            # PowerShell nos devolverá el comando como "Eco", así que aparecerá de nuevo
+            # de forma natural y con el salto de línea correcto.
+            cursor.removeSelectedText()
 
-            # Envío de la cadena de comando al flujo de entrada de PowerShell
+            # Send the command string to the PowerShell input stream
             self.process.write((command + "\n").encode('utf-8'))
             return
 
-        # Delegación de teclas estándar al comportamiento base de QPlainTextEdit
+        # Delegate standard keys to base QPlainTextEdit behavior
         QPlainTextEdit.keyPressEvent(self.terminal_edit, event)
 
-
     # =====================================================================
-    # SECCIÓN DE EJECUCIÓN: INTERFAZ HACIA EL COMPILADOR
-    # Estos métodos actúan como la API pública del TerminalManager para
-    # recibir y detonar el procesamiento de datos del Backend.
+    # EXECUTION SECTION: COMPILER INTERFACE
+    # These methods act as the TerminalManager's public API to receive
+    # and trigger data processing from the Backend.
     #
-    # Flujo general:
-    # 1. Cambian el foco de la UI a la pestaña correspondiente.
-    # 2. Limpian el buffer anterior.
-    # 3. Detonan el hilo de ejecución o renderizan simulaciones.
+    # General Flow:
+    # 1. Switch UI focus to the corresponding tab.
+    # 2. Clear previous buffers.
+    # 3. Trigger the execution thread or render simulated output.
     # =====================================================================
 
     def run_python_file(self, file_path):
-        """Ejecución estándar en terminal."""
+        """Standard execution in the system terminal."""
         self.setCurrentIndex(0)
         self.show()
         if file_path:
-            comando = f'python "{file_path}"\n'
-            self.process.write(comando.encode('utf-8'))
+            command = f'python "{file_path}"\n'
+            self.process.write(command.encode('utf-8'))
 
     # =====================================================================
-    # GESTIÓN ASÍNCRONA: execute_lexical y on_lexical_finished
-    # Qué hace: Inicia el worker del scanner y maneja su callback.
+    # ASYNCHRONOUS MANAGEMENT: execute_lexical and on_lexical_finished
+    # What it does: Initializes the scanner worker and handles its callback.
     # =====================================================================
     def execute_lexical(self, source_code):
-            """Procesa el código usando un hilo en segundo plano."""
+            """Processes code using a background thread."""
             self.setCurrentIndex(1)
             self.show()
             self.lexico_output.clear()
 
             if not source_code:
-                self.lexico_output.setPlainText("ERROR: Ningún archivo seleccionado. Abre o guarda un archivo primero.")
+                self.lexico_output.setPlainText("ERROR: No file selected. Open or save a file first.")
                 return
 
-            self.lexico_output.appendPlainText(f"Ejecutando análisis léxico en: {source_code}...\n")
+            self.lexico_output.appendPlainText(f"Executing lexical analysis on: {source_code}...\n")
 
-            # Preparamos al worker pasándole la ruta del archivo
+            # Prepare worker by passing the file path/source
             self.lexer_thread = LexerWorker(source_code)
 
-            # Conectamos la señal de finalización al callback de actualización UI
+            # Connect completion signal to the UI update callback
             self.lexer_thread.finished_signal.connect(self.on_lexical_finished)
 
-            # ¡Iniciamos el worker en segundo plano!
+            # Start the background worker!
             self.lexer_thread.start()
 
     def on_lexical_finished(self, resultado, error):
-        """Esta función es llamada automáticamente cuando el LexerWorker termina."""
+        """This function is called automatically when LexerWorker finishes."""
         if error:
-            self.lexico_output.appendPlainText(f"\nERROR CRÍTICO DURANTE EL ANÁLISIS:\n{error}")
+            self.lexico_output.appendPlainText(f"\nCRITICAL ERROR DURING ANALYSIS:\n{error}")
         else:
             self.lexico_output.appendPlainText(resultado)
 
 
-
     def execute_syntactic(self, source_code):
-        """Procesa el código y actualiza la pestaña Sintáctica."""
+        """Processes code and updates the Syntactic tab."""
         self.setCurrentIndex(2)
         self.show()
         self.sintactico_output.clear()
 
-        # Simulación de estructura de árbol AST
-        resultado_simulado = f"=== RESULTADO SINTÁCTICO ===\nÁrbol AST para:\n{source_code}"
+        # Simulated AST tree structure
+        resultado_simulado = f"=== SYNTACTIC RESULT ===\nAST Tree for:\n{source_code}"
         self.sintactico_output.setPlainText(resultado_simulado)
 
     def execute_semantic(self, source_code):
-        """Procesa el código y actualiza la pestaña Semántica."""
+        """Processes code and updates the Semantic tab."""
         self.setCurrentIndex(3)
         self.show()
         self.semantico_output.clear()
 
-        # Simulación de validación de tipos y ámbitos
-        resultado_simulado = f"=== RESULTADO SEMÁNTICO ===\nValidación para:\n{source_code}"
+        # Simulated type and scope validation
+        resultado_simulado = f"=== SEMANTIC RESULT ===\nValidation for:\n{source_code}"
         self.semantico_output.setPlainText(resultado_simulado)
 
     def execute_intermediate(self, source_code):
-        """Genera y muestra el código intermedio."""
+        """Generates and displays intermediate code."""
         self.setCurrentIndex(4)
         self.show()
         self.codigo_intermedio.clear()
 
-        # Simulación de generación de código de tres direcciones o cuádruplos
-        resultado_simulado = f"=== CÓDIGO INTERMEDIO ===\nCuádruplos generados para:\n{source_code}"
+        # Simulated 3-address code or quadruples generation
+        resultado_simulado = f"=== INTERMEDIATE CODE ===\nQuadruples generated for:\n{source_code}"
         self.codigo_intermedio.setPlainText(resultado_simulado)

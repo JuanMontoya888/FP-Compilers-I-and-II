@@ -1,19 +1,48 @@
 # This Python file uses the following encoding: utf-8
 from PySide6.QtGui import QShortcut, QKeySequence
 
+# =====================================================================
+# CLASS: Shortcuts (KEYBOARD EVENT DISPATCHER)
+# This class centralizes the management of keyboard shortcuts for the IDE.
+# It serves as a bridge between user input gestures and the underlying
+# functional logic of the file tree, editor tabs, and terminal.
+#
+# Architecture:
+# - Decouples keyboard event handling from the main UI class.
+# - Provides a unified registry for global hotkeys.
+# - Manages cross-component interactions (UI toggles, file operations).
+# =====================================================================
 class Shortcuts:
+
+    # =====================================================================
+    # METHOD: __init__
+    # What it does: Initializes the shortcut manager and stores references
+    # to essential IDE components.
+    # What components it uses: tree_manager, editor_manager.
+    # How it interacts: Captures pointers to the main window and managers
+    # to trigger their methods when a key sequence is detected.
+    # =====================================================================
     def __init__(self, parent_widget, tree_manager, editor_manager):
-        # Guardamos las referencias
+        # Store references for interaction
         self.parent = parent_widget
         self.tree = tree_manager
         self.editor = editor_manager
 
-        # Llamamos a la función que configura todos los atajos
+        # Execute the configuration of all global shortcuts
         self.setup_shortcuts()
 
+
+    # =====================================================================
+    # METHOD: setup_shortcuts (HOTKEY REGISTRY)
+    # What it does: Maps physical key sequences to specific function calls.
+    # What components it uses: QShortcut, QKeySequence (PySide6).
+    # How it interacts: Connects UI signals (activated) to logic defined
+    # within the Editor, Tree, and Terminal systems.
+    # =====================================================================
     def setup_shortcuts(self):
         # ==========================================
-        # ARCHIVOS Y CARPETAS
+        # FILES AND DIRECTORIES
+        # Logic related to I/O operations and app state.
         # ==========================================
         QShortcut(QKeySequence("Ctrl+S"), self.parent).activated.connect(self.editor.save_current_page)
         QShortcut(QKeySequence("Ctrl+Shift+S"), self.parent).activated.connect(self.editor.save_as_current_page)
@@ -23,46 +52,80 @@ class Shortcuts:
         QShortcut(QKeySequence("Ctrl+Q"), self.parent).activated.connect(self.parent.close)
 
         # ==========================================
-        # PESTAÑAS (TABS)
+        # TAB MANAGEMENT
+        # Logic to manipulate the editor's workspace tabs.
         # ==========================================
         QShortcut(QKeySequence("Ctrl+W"), self.parent).activated.connect(self.close_current_tab)
 
         # ==========================================
-        # EJECUCIÓN Y VISIBILIDAD
+        # EXECUTION AND VISIBILITY
+        # Hotkeys for workspace layout and code processing.
         # ==========================================
         QShortcut(QKeySequence("F5"), self.parent).activated.connect(self.run_code)
         QShortcut(QKeySequence("Ctrl+B"), self.parent).activated.connect(self.toggle_sidebar)
 
-        # Mostrar/Ocultar Terminal (Ctrl+` y Ctrl+J como alternativa)
+        # Show/Hide Terminal (Ctrl+` and Ctrl+J as alternative)
         QShortcut(QKeySequence("Ctrl+`"), self.parent).activated.connect(self.toggle_terminal)
         QShortcut(QKeySequence("Ctrl+J"), self.parent).activated.connect(self.toggle_terminal)
 
 
-    # -------------------------- Funciones auxiliares para los atajos --------------------------
+    # =====================================================================
+    # SECTION: HELPER LOGIC FOR SHORTCUTS
+    # These methods implement specific UI behaviors that are triggered
+    # by the hotkeys registered in setup_shortcuts.
+    # =====================================================================
+
+    # =====================================================================
+    # METHOD: close_current_tab
+    # What it does: Safely closes the currently focused editor tab.
+    # What components it uses: QTabWidget (via editor_manager).
+    # How it interacts: Queries the editor for the active index and
+    # requests the close_page logic to handle save prompts or buffer removal.
+    # =====================================================================
     def close_current_tab(self):
-        """Cierra la pestaña que esté activa en este momento."""
+        """Closes the tab that is currently active."""
         current_index = self.editor.tabs.currentIndex()
         if current_index >= 0:
             self.editor.close_page(current_index)
 
+
+    # =====================================================================
+    # METHOD: run_code
+    # What it does: Trigger mechanism for the compilation/execution phase.
+    # Interaction: Serves as a hook to connect the backend compiler.
+    # =====================================================================
     def run_code(self):
-        """Lógica para el atajo F5."""
-        print("Atajo F5 presionado: ¡Aquí conectaremos el compilador de Python!")
-        # Si tienes un botón Run, lo puedes conectar así:
+        """Logic for the F5 shortcut."""
+        print("F5 Shortcut pressed: Here we will connect the Python compiler!")
+        # If you have a Run button, you can trigger it like this:
         # self.parent.ui.runButton.click()
 
-    # Metodo para ocultar el panel izquierdo
+
+    # =====================================================================
+    # METHOD: toggle_sidebar
+    # What it does: Dynamically hides or shows the left file explorer.
+    # What components it uses: QSplitter (via parent UI).
+    # How it interacts: Modifies the layout distribution (splitter sizes)
+    # to expand or collapse the sidebar widget.
+    # =====================================================================
     def toggle_sidebar(self):
-        """Oculta o muestra el panel izquierdo con Ctrl+B."""
+        """Hides or shows the left panel with Ctrl+B."""
         sizes = self.parent.ui.splitter.sizes()
         if sizes[0] > 0:
             self.parent.ui.splitter.setSizes([0, sizes[1]])
         else:
             self.parent.ui.splitter.setSizes([250, sizes[1]])
 
-    # Metodo para cerrar y abrir el tab widget
+
+    # =====================================================================
+    # METHOD: toggle_terminal
+    # What it does: Controls the visibility of the bottom terminal manager.
+    # What components it uses: TerminalManager (widget).
+    # How it interacts: Directly toggles the visibility state of the
+    # output console area.
+    # =====================================================================
     def toggle_terminal(self):
-            """Oculta o muestra el panel inferior completo."""
+            """Hides or shows the entire bottom panel."""
             if self.parent.terminal_manager.isVisible():
                 self.parent.terminal_manager.hide()
             else:

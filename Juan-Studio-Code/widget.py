@@ -12,57 +12,62 @@ from codeEditorManager import CodeEditorManager
 from shortcuts import Shortcuts
 from terminalManager import TerminalManager
 
-# ============================================================
-# CLASE PRINCIPAL: WIDGET (ORQUESTADOR DEL IDE)
-# Esta clase actúa como el núcleo central de la aplicación,
-# encargada de la inicialización coordinada de la interfaz
-# de usuario y la integración de los gestores lógicos.
+# =====================================================================
+# MAIN ARCHITECTURE: Widget Class (IDE Orchestrator)
+# This class serves as the central "Heart" of the application. It is
+# responsible for the coordinated initialization of the User Interface
+# (UI) and the synchronous integration of all backend managers.
 #
-# Responsabilidades:
-# - Cargar la definición de la interfaz (UI).
-# - Configurar la arquitectura de paneles (Splitters).
-# - Instanciar los gestores de archivos, editor y consola.
-# - Vincular la interactividad de la barra de herramientas.
-# ============================================================
+# Design Patterns & Roles:
+# - Mediator: Manages communication between the File Tree, Editor, and Terminal.
+# - Orchestrator: Ensures resources (icons, layouts) are loaded in order.
+# - Dependency Hub: Injects references across different manager instances.
+# =====================================================================
 class Widget(QWidget):
 
     # ============================================================
-    # MÉTODO: __init__
-    # Qué hace: Constructor de la clase y punto de inicio del Widget.
-    # Qué componentes usa: ui_form (Ui_Widget).
-    # Cómo interactúa: Establece la secuencia obligatoria de
-    # configuración para asegurar que los componentes se creen en
-    # el orden jerárquico correcto.
+    # METHOD: __init__
+    # What it does: Class constructor and entry point for the Widget.
+    # What components it uses: Ui_Widget, os module.
+    # How it interacts: Initializes the UI form and sets up global
+    # state variables (paths/selections) before triggering the
+    # specialized configuration sequence.
     # ============================================================
     def __init__(self, parent=None):
+        """
+        Initializes the main window and state variables.
+        """
         super().__init__(parent)
         self.ui = Ui_Widget()
         self.ui.setupUi(self)
 
-        # creamos una instancia del current path
-        self.current_path = os.getcwd()
+        # Global state tracking for the current workspace
+        self.current_path =  "C:/Users/Juan/Desktop/" or os.getcwd()
         self.current_file_selected = None
 
-        # Mantenemos el __init__ compacto llamando a los métodos de configuración
+        # Execute organized setup sequence
         self.setup_icons()
         self.setup_layout()
         self.setup_components()
         self.setup_connections()
 
+
     # ============================================================
-    # MÉTODO: setup_icons
-    # Qué hace: Gestiona la carga y asignación de recursos visuales.
-    # Qué componentes usa: QIcon, QSize, OS Path.
-    # Cómo interactúa: Localiza la carpeta de recursos del proyecto
-    # para dotar de identidad visual a la "Activity Bar" lateral.
+    # METHOD: setup_icons (ASSET MANAGEMENT)
+    # What it does: Resolves resource paths and assigns SVG icons.
+    # What components it uses: QIcon, QSize, Absolute path resolution.
+    # How it interacts: Links local physical assets to the toolbar
+    # buttons defined in the UI form, providing visual identity.
     # ============================================================
     def setup_icons(self):
-        """ ------ CONFIGURACIÓN DE ÍCONOS DE LA ACTIVITY BAR ------ """
+        """
+        Locates SVG resources and maps them to the sidebar buttons.
+        """
         base_dir = os.path.dirname(os.path.abspath(__file__))
         icons_dir = os.path.join(base_dir, "icons")
         icon_size = QSize(24, 24)
 
-        # Asignación de iconos SVG a los botones de control y análisis
+        # Mapping SVG assets to specific toolbar functionality
         self.ui.lexicoButton.setIcon(QIcon(os.path.join(icons_dir, "lexico.svg")))
         self.ui.lexicoButton.setIconSize(icon_size)
 
@@ -93,128 +98,133 @@ class Widget(QWidget):
         self.ui.newDirectoryButton.setIcon(QIcon(os.path.join(icons_dir, "new_folder.svg")))
         self.ui.newDirectoryButton.setIconSize(icon_size)
 
-        # ==========================================
-        # Asignación de texto Flotante para cada botón
-        # ==========================================
-
-        # Archivos y Directorios
-        self.ui.saveFileButton.setToolTip("Save file")
+        # Accessibility: Defining tooltips for the button interface
+        self.ui.saveFileButton.setToolTip("Save current file")
         self.ui.saveAsFileButton.setToolTip("Save file as...")
         self.ui.newDirectoryButton.setToolTip("Open directory")
-
-        # Ejecución y Análisis
         self.ui.runButton_.setToolTip("Run / Open Terminal")
         self.ui.lexicoButton.setToolTip("Lexical Analysis")
         self.ui.sintacticoButton.setToolTip("Syntax Analysis")
         self.ui.semanticoButton.setToolTip("Semantic Analysis")
         self.ui.codIntButton.setToolTip("Intermediate Code")
-
-        # Herramientas y Debugging
         self.ui.tablaSimbolosButton.setToolTip("View Symbol Table")
         self.ui.errorButton.setToolTip("View Error Console")
 
+
     # ============================================================
-    # MÉTODO: setup_components
-    # Qué hace: Instancia los "Managers" o cerebros lógicos del programa.
-    # Qué componentes usa: CodeEditorManager, TreeManager, Shortcuts.
-    # Cómo interactúa: Realiza una inyección de dependencias pasando
-    # referencias de la UI y de otros managers para permitir la
-    # comunicación entre el sistema de archivos y el editor.
+    # METHOD: setup_components (LOGICAL BRAIN INITIALIZATION)
+    # What it does: Instantiates specialized managers and links them.
+    # What components it uses: CodeEditorManager, TreeManager, Shortcuts.
+    # How it interacts: Performs dependency injection by cross-referencing
+    # managers (e.g., Tree knows about Editor) to enable integrated workflows.
     # ============================================================
     def setup_components(self):
-        """ ------ Configuraciones de componentes y atajos ------ """
-        # Gestión de documentos y pestañas
+        """
+        Initializes logic controllers and registers global hotkeys.
+        """
+        # Orchestrate tab and text editing logic
         self.editor_manager = CodeEditorManager(self.ui.tabWidget, self)
 
-        # Gestión del sistema de archivos vinculado a la terminal y editor
+        # Orchestrate File System interaction linked to the editor and terminal
         self.explorer = TreeManager(self.ui.treeView, self.ui, self.editor_manager, self.terminal_manager, self)
 
-        # Registro de manejadores de eventos de teclado globales
+        # Attach keyboard shortcut listeners to the window
         self.atajos = Shortcuts(self, self.explorer, self.editor_manager)
 
+        # Final cross-reference injection
         self.editor_manager.tree_manager = self.explorer
 
 
     # ============================================================
-    # MÉTODO: setup_layout
-    # Qué hace: Define la jerarquía visual y el comportamiento elástico de los paneles.
-    # Qué componentes usa: QSplitter, TerminalManager.
-    # Cómo interactúa: Organiza la UI en dos grandes ejes: un divisor
-    # horizontal para el explorador y un divisor vertical para el área
-    # de edición y la consola de salida.
+    # METHOD: setup_layout (UI GEOMETRY & PANEL HIERARCHY)
+    # What it does: Configures splitters and embeds the TerminalManager.
+    # What components it uses: QSplitter, TerminalManager.
+    # How it interacts: Defines the elastic behavior of the workspace,
+    # ensuring the editor has priority while keeping the terminal
+    # collapsible at the bottom.
     # ============================================================
     def setup_layout(self):
-        """ ------ Configuraciones de los splitters y la terminal ------ """
-        # Control del factor de estiramiento para el panel lateral (Explorer)
+        """
+        Defines the visual architecture and initial visibility states.
+        """
+        # Horizontal Splitter: [Sidebar Explorer | Main Workspace]
         self.ui.splitter.setStretchFactor(0, 0)
         self.ui.splitter.setStretchFactor(1, 1)
 
-        # Construcción de la arquitectura vertical (Editor arriba, Terminal abajo)
+        # Vertical Splitter: [Code Editor Tabs | Output Consoles]
         self.v_splitter = QSplitter(Qt.Vertical)
         self.v_splitter.addWidget(self.ui.tabWidget)
 
+        # Terminal injection
         self.terminal_manager = TerminalManager()
         self.v_splitter.addWidget(self.terminal_manager)
 
-        # Estado inicial del panel inferior
+        # Initialize with collapsed console
         self.terminal_manager.hide()
 
-        # Priorizamos el espacio del editor sobre el de la terminal
+        # Layout Priorities: Editor consumes 100% of available vertical space by default
         self.v_splitter.setStretchFactor(0, 1)
         self.v_splitter.setStretchFactor(1, 0)
 
-        # Integración del layout vertical en el contenedor principal
+        # Final integration into the main layout container
         self.ui.splitter.addWidget(self.v_splitter)
         self.ui.splitter.setSizes([200, 800])
 
+
     # ============================================================
-    # MÉTODO: setup_connections
-    # Qué hace: Establece el sistema de Señales y Slots (Eventos).
-    # Qué componentes usa: QPushButton/QToolButton de la UI.
-    # Cómo interactúa: Conecta los clics de la barra de herramientas
-    # lateral con el panel inferior, permitiendo cambiar de pestaña
-    # según el tipo de análisis solicitado.
+    # METHOD: setup_connections (EVENT ROUTING)
+    # What it does: Establishes the Signal and Slot system for the UI.
+    # What components it uses: PySide6 Signal/Slot mechanism.
+    # How it interacts: Routes toolbar clicks to the appropriate
+    # terminal tab or file system action.
     # ============================================================
     def setup_connections(self):
-        """ ------ Conexión de botones a sus respectivas acciones ------ """
-        # Mapeo de botones hacia índices específicos de la terminal/consola
-        self.ui.runButton_.clicked.connect(lambda: self.open_bottom_panel(0))      # Abre Terminal
-        self.ui.lexicoButton.clicked.connect(lambda: self.open_bottom_panel(1))    # Abre Análisis Léxico
-        self.ui.sintacticoButton.clicked.connect(lambda: self.open_bottom_panel(2))# Abre Análisis Sintáctico
-        self.ui.semanticoButton.clicked.connect(lambda: self.open_bottom_panel(3)) # Abre Análisis Semántico
-        self.ui.codIntButton.clicked.connect(lambda: self.open_bottom_panel(4))    # Abre Código Intermedio
-        self.ui.tablaSimbolosButton.clicked.connect(lambda: self.open_bottom_panel(5))    # Abre Tabla de Símbolos
-        self.ui.errorButton.clicked.connect(lambda: self.open_bottom_panel(6))    # Abre Errores
+        """
+        Binds interface events to controller logic.
+        """
+        # Routing Activity Bar clicks to the bottom console switcher
+        self.ui.runButton_.clicked.connect(lambda: self.open_bottom_panel(0))
+        self.ui.lexicoButton.clicked.connect(lambda: self.open_bottom_panel(1))
+        self.ui.sintacticoButton.clicked.connect(lambda: self.open_bottom_panel(2))
+        self.ui.semanticoButton.clicked.connect(lambda: self.open_bottom_panel(3))
+        self.ui.codIntButton.clicked.connect(lambda: self.open_bottom_panel(4))
+        self.ui.tablaSimbolosButton.clicked.connect(lambda: self.open_bottom_panel(5))
+        self.ui.errorButton.clicked.connect(lambda: self.open_bottom_panel(6))
 
+        # Connecting file action buttons to the TreeManager API
         self.ui.saveAsFileButton.clicked.connect(self.explorer.save_as_file_action)
         self.ui.saveFileButton.clicked.connect(self.explorer.save_file_action)
         self.ui.newDirectoryButton.clicked.connect(self.explorer.open_dir_action)
 
 
     # ============================================================
-    # MÉTODO: open_bottom_panel
-    # Qué hace: Gestiona la visibilidad y enfoque del panel inferior.
-    # Qué componentes usa: terminal_manager (QTabWidget personalizado).
-    # Cómo interactúa: Es invocado por las conexiones de la UI para
-    # asegurar que el usuario vea el resultado de sus acciones.
+    # METHOD: open_bottom_panel (VIEW CONTROLLER)
+    # What it does: Manages visibility and context of the console area.
+    # What components it uses: TerminalManager, Match/Case logic.
+    # How it interacts: Triggers backend analysis (Lexical, etc.) based
+    # on the active index and forces UI focus on the bottom area.
     # ============================================================
     def open_bottom_panel(self, tab_index):
-        """Muestra el panel inferior y selecciona la pestaña indicada."""
-        # dependiendo de el numero, ajecutaremos la accion para analisis
+        """
+        Switches console tabs and triggers corresponding compiler logic.
+        """
+        # Execution Switch: Trigger backend task based on requested view
         match(tab_index):
-                case 1:
-                        self.terminal_manager.execute_lexical(self.current_file_selected)
+            case 1:
+                # Trigger background lexical processing
+                self.terminal_manager.execute_lexical(self.current_file_selected)
 
+        # Switch tab index and ensure the widget is visible to the user
         self.terminal_manager.setCurrentIndex(tab_index)
         if not self.terminal_manager.isVisible():
             self.terminal_manager.show()
 
-# ============================================================
-# BLOQUE PRINCIPAL DE EJECUCIÓN (ENTRY POINT)
-# Este bloque inicializa el bucle de eventos de Qt y proporciona
-# un mecanismo de captura de errores críticos para facilitar
-# el debugging en entornos de producción.
-# ============================================================
+
+# =====================================================================
+# BLOCK: MAIN EXECUTION (APPLICATION ENTRY POINT)
+# Initializes the global Qt application context and provides a
+# high-level exception handler for debugging unexpected crashes.
+# =====================================================================
 if __name__ == "__main__":
     try:
         app = QApplication(sys.argv)
@@ -222,10 +232,10 @@ if __name__ == "__main__":
         widget.showMaximized()
         sys.exit(app.exec())
     except Exception as e:
-        # Sistema de diagnóstico de fallos catastróficos
-        print("\n" + "="*50)
-        print("ERROR CRÍTICO AL INICIAR LA APLICACIÓN")
-        print("="*50)
+        # Diagnostic display for catastrophic errors
+        print("\n" + "="*60)
+        print("CRITICAL ERROR: THE APPLICATION FAILED TO START")
+        print("="*60)
         traceback.print_exc()
-        print("="*50 + "\n")
-        input("Presiona Enter para cerrar...")
+        print("="*60 + "\n")
+        input("System Failure. Press Enter to exit...")

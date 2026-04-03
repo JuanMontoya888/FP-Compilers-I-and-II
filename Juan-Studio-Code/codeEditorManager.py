@@ -3,71 +3,243 @@ import os
 from PySide6.QtWidgets import QPlainTextEdit, QVBoxLayout, QHBoxLayout, QWidget, QTextEdit, QLabel, QMessageBox, QFileDialog
 from PySide6.QtCore import Qt, QRect, QSize
 from PySide6.QtGui import QPainter, QColor, QTextFormat
+from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
+from PySide6.QtCore import QRegularExpression
 
 # ============================================================
-# SECCIÓN: COMPONENTES GRÁFICOS DEL EDITOR
-# Estos componentes extienden la funcionalidad base de PySide6
-# para añadir características esenciales de un IDE, como el
-# área de numeración de líneas y el resaltado visual.
+# ARCHITECTURE: GRAPHICAL EDITOR ENGINE
+# This module contains the core components for the IDE's
+# text manipulation, including syntax highlighting,
+# line numbering gutters, and document lifecycle management.
 # ============================================================
 
-# ============================================================
-# CLASE: LineNumberArea
-# Qué hace: Actúa como un lienzo (Canvas) lateral vinculado al
-# editor para dibujar los números de línea.
-# Qué componentes usa: QWidget.
-# Cómo interactúa: Es instanciado por 'CodeEditor'. Delega la
-# responsabilidad del dibujo al editor principal mediante
-# rellamadas (callbacks) en el evento de pintura.
-# ============================================================
+# =====================================================================
+# CLASS: LineNumberArea (VISUAL GUTTER)
+# This component acts as a side canvas linked to the editor to
+# render line numbers.
+#
+# Responsibilities:
+# - Provide a dedicated drawing area for line counts.
+# - Synchronize its size with the editor's digit count.
+# - Delegate paint events to the editor's coordinate system.
+# =====================================================================
 class LineNumberArea(QWidget):
+    # ============================================================
+    # METHOD: __init__
+    # What it does: Initializes the gutter widget.
+    # What components it uses: QWidget base class.
+    # Interaction: Stores a reference to the parent CodeEditor to
+    # access its font metrics and block counts.
+    # ============================================================
     def __init__(self, editor):
         super().__init__(editor)
         self.code_editor = editor
 
+    # ============================================================
+    # METHOD: sizeHint
+    # What it does: Defines the recommended width for the gutter.
+    # What components it uses: QSize.
+    # Interaction: Calls the editor's internal width calculation logic.
+    # ============================================================
     def sizeHint(self):
-        # Define el ancho sugerido basado en el cálculo de dígitos del editor
         return QSize(self.code_editor.line_number_area_width(), 0)
 
+    # ============================================================
+    # METHOD: paintEvent
+    # What it does: Triggered when the gutter needs to be redrawn.
+    # Interaction: Passes the event context back to the CodeEditor
+    # to handle the actual text rendering.
+    # ============================================================
     def paintEvent(self, event):
-        # Redirige el control del dibujo al núcleo del editor
         self.code_editor.lineNumberAreaPaintEvent(event)
 
 
-# ============================================================
-# CLASE: CodeEditor (NÚCLEO DEL EDITOR)
-# Qué hace: Extiende QPlainTextEdit para gestionar márgenes
-# dinámicos, resaltado de línea actual y renderizado de numeración.
-# Qué componentes usa: LineNumberArea, QPainter, QTextFormat.
-# Cómo interactúa: Coordina eventos de scroll, cambio de cursor
-# y redimensionamiento para mantener sincronizada el área lateral.
-# ============================================================
+# =====================================================================
+# CLASS: Highlighter (SYNTAX HIGHLIGHTING ENGINE)
+# Scans the editor's document using Regular Expressions to apply
+# visual styles (colors, bold, italics) to specific code tokens.
+#
+# Components: QSyntaxHighlighter, QRegularExpression, QTextCharFormat.
+# Interaction: Attaches to the QTextDocument of the editor and
+# re-highlights text blocks whenever they are modified.
+# =====================================================================
+class Highlighter(QSyntaxHighlighter):
+    # ============================================================
+    # METHOD: __init__
+    # What it does: Defines the language grammar and visual palette.
+    # Components: QTextCharFormat for styling, QRegularExpression for matching.
+    # Interaction: Populates a list of rules that map patterns to styles.
+    # ============================================================
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.highlightingRules = []
+
+        # ----------------------------------------------------
+        # STYLING DEFINITIONS (DARK MODE THEME)
+        # ----------------------------------------------------
+
+        # Structural Keywords (Pink/Red style)
+        keywordFormat = QTextCharFormat()
+        keywordFormat.setForeground(QColor("#ff6480"))
+        keywordFormat.setFontItalic(True)
+
+        # Data Types (Cyan/Teal)
+        typeFormat = QTextCharFormat()
+        typeFormat.setForeground(QColor("#56b6c2"))
+        typeFormat.setFontItalic(True)
+
+        # Numbers (Light Green)
+        numberFormat = QTextCharFormat()
+        numberFormat.setForeground(QColor("#B5CEA8"))
+
+        # Strings, Chars, and angle-bracket headers (Orange/Yellow)
+        stringFormat = QTextCharFormat()
+        stringFormat.setForeground(QColor("#e5c07b"))
+
+        # Operators and Symbols (Light Gray)
+        operatorFormat = QTextCharFormat()
+        operatorFormat.setForeground(QColor("#AAAAAA"))
+
+        # Comments (Green)
+        self.commentFormat = QTextCharFormat()
+        self.commentFormat.setForeground(QColor("#6A9955"))
+        self.commentFormat.setFontItalic(True)
+
+        # Preprocessor Directives (Purple Bold)
+        self.librariesFormat = QTextCharFormat()
+        self.librariesFormat.setForeground(QColor("#C586C0"))
+        self.librariesFormat.setFontItalic(True)
+        self.librariesFormat.setFontWeight(QFont.Bold)
+
+        # ----------------------------------------------------
+        # REGEX MAPPING
+        # ----------------------------------------------------
+
+        # Structural Keywords mapping
+        keywords = [
+            r"\bif\b", r"\bthen\b", r"\buntil\b", r"\belse\b", r"\bend\b", r"\bdo\b", r"\bwhile\b",
+            r"\bswitch\b", r"\bcase\b", r"\bmain\b", r"\bcin\b", r"\bcout\b",
+            r"\bbreak\b", r"\bcontinue\b", r"\bfor\b", r"\bgoto\b", r"\breturn\b",
+            r"\btry\b", r"\bcatch\b", r"\bthrow\b", r"\bclass\b", r"\bstruct\b",
+            r"\bpublic\b", r"\bprivate\b", r"\bprotected\b", r"\bvirtual\b",
+            r"\bfriend\b", r"\binline\b", r"\btemplate\b", r"\btypename\b",
+            r"\bthis\b", r"\bnew\b", r"\bdelete\b", r"\benum\b", r"\bunion\b",
+            r"\bnamespace\b", r"\busing\b", r"\btypedef\b", r"\bsizeof\b",
+            r"\bstatic\b", r"\bconst\b", r"\bextern\b", r"\bexplicit\b",
+            r"\boperator\b", r"\bconstexpr\b", r"\bdecltype\b", r"\bnoexcept\b",
+            r"\bvolatile\b", r"\bdefault\b", r"\btrue\b", r"\bfalse\b", r"\bnullptr\b"
+        ]
+        for word in keywords:
+            self.highlightingRules.append((QRegularExpression(word), keywordFormat))
+
+        # Data types mapping
+        data_types = [
+            r"\bint\b", r"\bfloat\b", r"\breal\b", r"\bstring\b", r"\bbool\b", r"\bchar\b",
+            r"\bdouble\b", r"\blong\b", r"\bshort\b", r"\bvoid\b", r"\bauto\b",
+            r"\bsigned\b", r"\bunsigned\b", r"\bwchar_t\b"
+        ]
+        for word in data_types:
+            self.highlightingRules.append((QRegularExpression(word), typeFormat))
+
+        # Directives, Numbers, Strings, and Operators rules
+        self.highlightingRules.append((QRegularExpression(r"#include"), self.librariesFormat))
+        self.highlightingRules.append((QRegularExpression(r"#define"), self.librariesFormat))
+        self.highlightingRules.append((QRegularExpression(r"\b[0-9]+(\.[0-9]+)?\b"), numberFormat))
+        self.highlightingRules.append((QRegularExpression(r'".*"'), stringFormat))
+        self.highlightingRules.append((QRegularExpression(r"'.?'"), stringFormat))
+        self.highlightingRules.append((QRegularExpression(r"<[a-zA-Z0-9_.]+>"), stringFormat))
+
+        operators = [
+            r"\+", r"-", r"\*", r"/", r"%", r"\^", r"\+\+", r"--",
+            r"<", r"<=", r">", r">=", r"==", r"!=", r"=", r"&&", r"\|\|", r"!",
+            r"\(", r"\)", r"\{", r"\}", r",", r";", r":"
+        ]
+        for op in operators:
+            self.highlightingRules.append((QRegularExpression(op), operatorFormat))
+
+        self.highlightingRules.append((QRegularExpression(r"//[^\n]*"), self.commentFormat))
+
+        # Block comment logic (state-dependent)
+        self.commentStartExpression = QRegularExpression(r"/\*")
+        self.commentEndExpression = QRegularExpression(r"\*/")
+
+    # ============================================================
+    # METHOD: highlightBlock
+    # What it does: Applies highlighting rules to a specific line.
+    # Interaction: Uses Qt's state management to handle multi-line
+    # comments spanning several blocks.
+    # ============================================================
+    def highlightBlock(self, text):
+        # Apply all independent single-line rules
+        for pattern, format in self.highlightingRules:
+            matchIterator = pattern.globalMatch(text)
+            while matchIterator.hasNext():
+                match = matchIterator.next()
+                self.setFormat(match.capturedStart(), match.capturedLength(), format)
+
+        # Multi-line comment processing (State: 0 = Code, 1 = Comment)
+        self.setCurrentBlockState(0)
+        startIndex = 0
+
+        if self.previousBlockState() != 1:
+            match = self.commentStartExpression.match(text)
+            startIndex = match.capturedStart()
+
+        while startIndex >= 0:
+            endMatch = self.commentEndExpression.match(text, startIndex)
+            endIndex = endMatch.capturedStart()
+            commentLength = 0
+
+            if endIndex == -1:
+                self.setCurrentBlockState(1)
+                commentLength = len(text) - startIndex
+            else:
+                commentLength = endIndex - startIndex + endMatch.capturedLength()
+
+            self.setFormat(startIndex, commentLength, self.commentFormat)
+            startMatch = self.commentStartExpression.match(text, startIndex + commentLength)
+            startIndex = startMatch.capturedStart()
+
+
+# =====================================================================
+# CLASS: CodeEditor (MAIN EDITING WIDGET)
+# A robust extension of QPlainTextEdit that integrates the gutter,
+# line highlighting, and viewport synchronization.
+#
+# Components: LineNumberArea, QPainter, QTextFormat.
+# Interaction: Connects text modification signals to UI update
+# requests for the gutter and visual markers.
+# =====================================================================
 class CodeEditor(QPlainTextEdit):
+    # ============================================================
+    # METHOD: __init__
+    # What it does: Sets up the visual editor properties.
+    # Interaction: Instantiates the gutter and connects scrolling/cursor
+    # signals to local handlers.
+    # ============================================================
     def __init__(self, parent=None):
         super().__init__(parent)
         self.line_number_area = LineNumberArea(self)
 
-        # CONFIGURACIÓN DE VISUALIZACIÓN: Desactiva el ajuste de línea (Line Wrap)
-        # Esto asegura que cada línea de código se mantenga en una sola fila física.
+        # UI Preference: Code usually doesn't wrap in IDEs
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
 
-        # Conexión de señales internas para la reactividad de la interfaz
+        # Signal-Slot connections for real-time reactivity
         self.blockCountChanged.connect(self.update_line_number_area_width)
         self.updateRequest.connect(self.update_line_number_area)
         self.cursorPositionChanged.connect(self.highlight_current_line)
 
         self.update_line_number_area_width(0)
         self.highlight_current_line()
-        self.tree_manager=None
+        self.tree_manager = None
 
-    #
-
+    # ============================================================
+    # METHOD: line_number_area_width
+    # What it does: Calculates horizontal space required by numbers.
+    # Interaction: Uses current font metrics to ensure the gutter
+    # grows as the file reaches 10, 100, or 1000 lines.
+    # ============================================================
     def line_number_area_width(self):
-        """
-        Qué hace: Calcula el ancho dinámico necesario para el margen izquierdo.
-        Componentes: fontMetrics.
-        Interacción: Escala el margen según la magnitud de líneas (1-9, 10-99, etc).
-        """
         digits = 1
         max_value = max(1, self.blockCount())
         while max_value >= 10:
@@ -76,35 +248,50 @@ class CodeEditor(QPlainTextEdit):
         space = 15 + self.fontMetrics().horizontalAdvance('9') * digits
         return space
 
+    # ============================================================
+    # METHOD: update_line_number_area_width
+    # What it does: Resizes the editor's left margin.
+    # Interaction: Modifies the viewport margins to prevent text
+    # from overlapping with the gutter.
+    # ============================================================
     def update_line_number_area_width(self, _):
-        """Ajusta el margen interno (Viewport) para dejar espacio a la numeración."""
         self.setViewportMargins(self.line_number_area_width(), 0, 0, 0)
 
+    # ============================================================
+    # METHOD: update_line_number_area
+    # What it does: Synchronizes gutter scrolling with the editor.
+    # Interaction: Triggers partial UI updates to the LineNumberArea
+    # during vertical scroll events.
+    # ============================================================
     def update_line_number_area(self, rect, dy):
-        """Maneja el desplazamiento vertical y la actualización parcial del widget lateral."""
         if dy:
             self.line_number_area.scroll(0, dy)
         else:
             self.line_number_area.update(0, rect.y(), self.line_number_area.width(), rect.height())
+
         if rect.contains(self.viewport().rect()):
             self.update_line_number_area_width(0)
 
+    # ============================================================
+    # METHOD: resizeEvent
+    # What it does: Adjusts the gutter geometry when the window resizes.
+    # ============================================================
     def resizeEvent(self, event):
-        """Sincroniza la geometría del área de números al cambiar el tamaño del editor."""
         super().resizeEvent(event)
         cr = self.contentsRect()
         self.line_number_area.setGeometry(QRect(cr.left(), cr.top(), self.line_number_area_width(), cr.height()))
 
+    # ============================================================
+    # METHOD: highlight_current_line
+    # What it does: Highlights the background of the active line.
+    # Components: ExtraSelection, QColor.
+    # Interaction: Provides visual feedback on where the cursor is.
+    # ============================================================
     def highlight_current_line(self):
-        """
-        Qué hace: Aplica un resaltado visual (ExtraSelection) a la línea activa.
-        Componentes: QTextEdit.ExtraSelection, QColor.
-        Interacción: Proporciona feedback visual inmediato sobre la posición del cursor.
-        """
         extra_selections = []
         if not self.isReadOnly():
             selection = QTextEdit.ExtraSelection()
-            line_color = QColor("#2d2d30") # Color oscuro sutil para el fondo
+            line_color = QColor("#2d2d30")
             selection.format.setBackground(line_color)
             selection.format.setProperty(QTextFormat.FullWidthSelection, True)
             selection.cursor = self.textCursor()
@@ -112,12 +299,14 @@ class CodeEditor(QPlainTextEdit):
             extra_selections.append(selection)
         self.setExtraSelections(extra_selections)
 
+    # ============================================================
+    # METHOD: lineNumberAreaPaintEvent
+    # What it does: The core drawing loop for the line numbers.
+    # Components: QPainter, QTextBlock.
+    # Interaction: Iterates only through visible blocks for performance
+    # optimization in large files.
+    # ============================================================
     def lineNumberAreaPaintEvent(self, event):
-        """
-        Qué hace: Ejecuta el bucle de renderizado para los números de línea.
-        Componentes: QPainter, QTextBlock.
-        Interacción: Itera solo sobre los bloques de texto visibles para optimizar el rendimiento.
-        """
         painter = QPainter(self.line_number_area)
         painter.fillRect(event.rect(), QColor("#1e1e1e"))
 
@@ -126,7 +315,6 @@ class CodeEditor(QPlainTextEdit):
         top = round(self.blockBoundingGeometry(block).translated(self.contentOffset()).top())
         bottom = top + round(self.blockBoundingRect(block).height())
 
-        # Bucle de dibujo: mapea bloques de texto a coordenadas verticales
         while block.isValid() and top <= event.rect().bottom():
             if block.isVisible() and bottom >= event.rect().top():
                 number = str(block_number + 1)
@@ -134,20 +322,27 @@ class CodeEditor(QPlainTextEdit):
                 painter.drawText(0, top, self.line_number_area.width() - 5,
                                  self.fontMetrics().height(),
                                  Qt.AlignRight | Qt.AlignVCenter, number)
+
             block = block.next()
             top = bottom
             bottom = top + round(self.blockBoundingRect(block).height())
             block_number += 1
 
 
-# ============================================================
-# CLASE: CodePage (CONTENEDOR DE PESTAÑA)
-# Qué hace: Encapsula el editor y la barra de estado en un solo widget.
-# Qué componentes usa: CodeEditor, QLabel, QVBoxLayout.
-# Cómo interactúa: Actúa como la unidad mínima que el 'CodeEditorManager'
-# inserta en las pestañas del QTabWidget.
-# ============================================================
+# =====================================================================
+# CLASS: CodePage (TAB CONTAINER)
+# Encapsulates an editor, its highlighter, and a status bar into a
+# single widget to be used within the main tab interface.
+#
+# Components: CodeEditor, Highlighter, QLabel, QVBoxLayout.
+# Interaction: Serves as the data unit for the CodeEditorManager.
+# =====================================================================
 class CodePage(QWidget):
+    # ============================================================
+    # METHOD: __init__
+    # What it does: Constructs the layout for a single open file tab.
+    # Interaction: Links the cursor movement to the status bar update logic.
+    # ============================================================
     def __init__(self, content="", file_path="", parent=None):
         super().__init__(parent)
         self.file_path = file_path
@@ -160,7 +355,10 @@ class CodePage(QWidget):
         self.editor.setPlainText(content)
         layout.addWidget(self.editor)
 
-        # Configuración de la barra de indicadores inferior
+        # Attach syntax highligher to this specific document
+        self.highlighter = Highlighter(self.editor.document())
+
+        # Status Bar UI construction
         self.status_bar = QWidget()
         self.status_bar.setObjectName("editorStatusBar")
         status_layout = QHBoxLayout(self.status_bar)
@@ -182,50 +380,59 @@ class CodePage(QWidget):
         self.editor.cursorPositionChanged.connect(self.update_cursor_position)
         self.update_cursor_position()
 
+    # ============================================================
+    # METHOD: update_cursor_position
+    # What it does: Updates Ln/Col labels based on cursor coordinates.
+    # ============================================================
     def update_cursor_position(self):
-        """Extrae la posición del cursor de texto para actualizar la barra de estado."""
         cursor = self.editor.textCursor()
         line = cursor.blockNumber() + 1
         col = cursor.positionInBlock() + 1
         self.lbl_cursor.setText(f"Ln {line}, Col {col}")
 
 
-# ============================================================
-# CLASE: CodeEditorManager (ORQUESTADOR DE DOCUMENTOS)
-# Qué hace: Gestiona el ciclo de vida de los archivos abiertos (Tabs).
-# Qué componentes usa: QTabWidget, QMessageBox, QFileDialog.
-# Cómo interactúa: Centraliza el guardado, cierre y control de
-# cambios (estado modificado '*') de todas las pestañas.
-# ============================================================
+# =====================================================================
+# CLASS: CodeEditorManager (DOCUMENTS CONTROLLER)
+# Orchestrates the lifecycle of multiple tabs, including opening,
+# saving, closing, and tracking unsaved changes.
+#
+# Components: QTabWidget, QMessageBox, QFileDialog.
+# Interaction: Connects to the main app to update global context
+# based on which tab is currently selected.
+# =====================================================================
 class CodeEditorManager:
+    # ============================================================
+    # METHOD: __init__
+    # What it does: Initializes the tab management logic.
+    # Interaction: Connects tab closure signals to the local handler.
+    # ============================================================
     def __init__(self, tab_widget, main_app):
         self.tabs = tab_widget
         self.tabs.setTabsClosable(True)
         self.tabs.tabCloseRequested.connect(self.close_page)
         self.main_app = main_app
-
         self.tabs.currentChanged.connect(self.update_context_from_tab)
 
+    # ============================================================
+    # METHOD: update_context_from_tab
+    # What it does: Updates global application paths when switching tabs.
+    # ============================================================
     def update_context_from_tab(self, index):
-            """
-            Qué hace: Mantiene a la app principal informada de dónde estamos.
-            Cada que cambias de pestaña o abres un archivo, el path global se actualiza.
-            """
             if index >= 0:
                 page = self.tabs.widget(index)
-                # Solo actualizamos si la pestaña actual tiene un archivo guardado/abierto
                 if hasattr(page, 'file_path') and page.file_path:
                     self.main_app.current_path = os.path.dirname(page.file_path)
                     self.main_app.current_file_selected = page.file_path
 
+    # ============================================================
+    # METHOD: add_new_page
+    # What it does: Creates a new tab for a file.
+    # Interaction: Checks if the file is already open before spawning
+    # a new tab. Connects text change detection to the "*" unsaved marker.
+    # ============================================================
     def add_new_page(self, title, content, file_path):
-        """
-        Qué hace: Instancia una nueva 'CodePage' y la añade al control de pestañas.
-        Interacción: Vincula la señal 'textChanged' para detectar ediciones futuras.
-        """
-        # Se revisa que no exista alguna abierta con el mismo nombre
         for i in range(self.tabs.count()):
-            page = self.tabs.widget(i) # get page
+            page = self.tabs.widget(i)
             if page.file_path == file_path and file_path != "":
                 self.tabs.setCurrentIndex(i)
                 return
@@ -233,56 +440,57 @@ class CodeEditorManager:
         new_page = CodePage(content, file_path)
         index = self.tabs.addTab(new_page, title)
         self.tabs.setCurrentIndex(index)
-
-        # Activa el sistema de detección de cambios en tiempo real
         new_page.editor.textChanged.connect(lambda: self.mark_as_unsaved(new_page))
 
+    # ============================================================
+    # METHOD: mark_as_unsaved
+    # What it does: Appends an asterisk to the tab title.
+    # ============================================================
     def mark_as_unsaved(self, page):
-        """Añade feedback visual (*) al título de la pestaña cuando hay cambios en el editor."""
         index = self.tabs.indexOf(page)
         if index >= 0:
             title = self.tabs.tabText(index)
             if not title.endswith("*"):
                 self.tabs.setTabText(index, title + "*")
 
+    # ============================================================
+    # METHOD: close_page
+    # What it does: Safely closes a tab.
+    # Interaction: Displays a confirmation dialog if the file has
+    # unsaved changes ("*").
+    # ============================================================
     def close_page(self, index):
-        """
-        Qué hace: Gestiona el flujo de cierre de un documento.
-        Componentes: QMessageBox.
-        Interacción: Intercepta el cierre para prevenir pérdida de datos si hay cambios (*).
-        """
         title = self.tabs.tabText(index)
 
         if title.endswith("*"):
-            respuesta = QMessageBox.question(
+            response = QMessageBox.question(
                 self.tabs,
-                "Guardar cambios",
-                f"El archivo '{title[:-1]}' tiene cambios sin guardar.\n¿Deseas guardarlo antes de cerrar?",
+                "Save Changes",
+                f"The file '{title[:-1]}' has unsaved changes.\nDo you want to save it before closing?",
                 QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel
             )
 
-            if respuesta == QMessageBox.Save:
+            if response == QMessageBox.Save:
                 self.tabs.setCurrentIndex(index)
                 self.save_current_page()
                 if self.tabs.tabText(index).endswith("*"):
                     return
-            elif respuesta == QMessageBox.Cancel:
+            elif response == QMessageBox.Cancel:
                 return
 
         if self.tabs.count() > 0:
             self.tabs.removeTab(index)
 
+    # ============================================================
+    # METHOD: save_current_page
+    # What it does: Writes the buffer to disk.
+    # Interaction: Delegates to "Save As" if no path is established.
+    # ============================================================
     def save_current_page(self):
-        """
-        Qué hace: Ejecuta la persistencia del archivo actual en disco.
-        Componentes: Standard Python open/write.
-        Interacción: Si el archivo es nuevo (sin ruta), redirige a 'save_as_current_page'.
-        """
         current_index = self.tabs.currentIndex()
         if current_index >= 0:
             current_page = self.tabs.widget(current_index)
             title = self.tabs.tabText(current_index)
-
 
             if current_page.file_path:
                 try:
@@ -293,31 +501,29 @@ class CodeEditorManager:
                     if title.endswith("*"):
                         self.tabs.setTabText(current_index, title[:-1])
 
-                    # Actualizamos las variables globales de la app
                     self.main_app.current_path = os.path.dirname(current_page.file_path)
                     self.main_app.current_file_selected = current_page.file_path
 
-                    QMessageBox.information(self.tabs, "Éxito", "Archivo guardado correctamente.")
+                    QMessageBox.information(self.tabs, "Success", "File saved successfully.")
                 except Exception as e:
-                    QMessageBox.critical(self.tabs, "Error", f"Error al guardar el archivo:\n{e}")
+                    QMessageBox.critical(self.tabs, "Error", f"Error saving file:\n{e}")
             else:
                 self.save_as_current_page()
 
+    # ============================================================
+    # METHOD: save_as_current_page
+    # What it does: Opens a dialog to create or overwrite a file.
+    # Interaction: Updates tab title and tree explorer root upon success.
+    # ============================================================
     def save_as_current_page(self):
-        """
-        Qué hace: Gestiona la creación de nuevos archivos físicos mediante explorador.
-        Componentes: QFileDialog.
-        Interacción: Actualiza la ruta del objeto 'CodePage' y el título de la pestaña.
-        """
         current_index = self.tabs.currentIndex()
         if current_index >= 0:
             current_page = self.tabs.widget(current_index)
-
             start_path = current_page.file_path or self.main_app.current_path
 
             file_path, _ = QFileDialog.getSaveFileName(
                 self.tabs,
-                "Guardar como...",
+                "Save As...",
                 start_path,
                 "All Files (*);;Text Files (*.txt);;Python Files (*.py)"
             )
@@ -331,11 +537,13 @@ class CodeEditorManager:
                     current_page.file_path = file_path
                     new_name = os.path.basename(file_path)
                     self.tabs.setTabText(current_index, new_name)
-
                     self.main_app.current_path = os.path.dirname(file_path)
-                    if hasattr(self.main_app, 'explorer'):
-                        self.main_app.explorer.tree.setRootIndex(self.main_app.explorer.model.index(self.main_app.current_path))
 
-                    QMessageBox.information(self.tabs, "Éxito", f"Archivo guardado como:\n{new_name}")
+                    if hasattr(self.main_app, 'explorer'):
+                        self.main_app.explorer.tree.setRootIndex(
+                            self.main_app.explorer.model.index(self.main_app.current_path)
+                        )
+
+                    QMessageBox.information(self.tabs, "Success", f"File saved as:\n{new_name}")
                 except Exception as e:
-                    QMessageBox.critical(self.tabs, "Error", f"Error al guardar como:\n{e}")
+                    QMessageBox.critical(self.tabs, "Error", f"Error during Save As:\n{e}")
