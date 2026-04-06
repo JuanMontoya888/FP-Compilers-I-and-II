@@ -278,10 +278,29 @@ class TerminalManager(QTabWidget):
 
     def on_lexical_finished(self, resultado, error):
         """This function is called automatically when LexerWorker finishes."""
+        
+        # Early return if there is some problem
         if error:
             self.lexico_output.appendPlainText(f"\nCRITICAL ERROR DURING ANALYSIS:\n{error}")
-        else:
-            self.lexico_output.appendPlainText(resultado)
+            return
+        
+            
+        # first split for lines
+        li = resultado.split("\n")
+        # get lines where exists errors
+        errors = [lin for lin in li if lin.startswith("ERROR")]
+        
+        if len(errors) > 0:
+            # First time it will clear terminal, when starts analyzing 
+            # a new code, and then will append all errors
+            self.errores.clear()
+            self.errores.appendPlainText("\tError in lexical analysis ...\n")
+            for err in errors:
+                self.errores.appendPlainText(f"{err.strip()}")
+        
+        
+        # Finally set all text to lexico_output
+        self.lexico_output.appendPlainText(resultado)
 
 
     def execute_syntactic(self, source_code):

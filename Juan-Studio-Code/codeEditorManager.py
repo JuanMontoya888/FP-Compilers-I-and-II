@@ -3,7 +3,7 @@ import os
 from PySide6.QtWidgets import QPlainTextEdit, QVBoxLayout, QHBoxLayout, QWidget, QTextEdit, QLabel, QMessageBox, QFileDialog
 from PySide6.QtCore import Qt, QRect, QSize
 from PySide6.QtGui import QPainter, QColor, QTextFormat
-from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
+from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QFont
 from PySide6.QtCore import QRegularExpression
 
 # ============================================================
@@ -78,7 +78,7 @@ class Highlighter(QSyntaxHighlighter):
         # STYLING DEFINITIONS (DARK MODE THEME)
         # ----------------------------------------------------
 
-        # Structural Keywords (Pink/Red style)
+        # Structural Keywords (Pink/Red Monokai style)
         keywordFormat = QTextCharFormat()
         keywordFormat.setForeground(QColor("#ff6480"))
         keywordFormat.setFontItalic(True)
@@ -117,7 +117,7 @@ class Highlighter(QSyntaxHighlighter):
 
         # Structural Keywords mapping
         keywords = [
-            r"\bif\b", r"\bthen\b", r"\buntil\b", r"\belse\b", r"\bend\b", r"\bdo\b", r"\bwhile\b",
+            r"\bif\b", r"\belse\b", r"\bend\b", r"\bdo\b", r"\bwhile\b",
             r"\bswitch\b", r"\bcase\b", r"\bmain\b", r"\bcin\b", r"\bcout\b",
             r"\bbreak\b", r"\bcontinue\b", r"\bfor\b", r"\bgoto\b", r"\breturn\b",
             r"\btry\b", r"\bcatch\b", r"\bthrow\b", r"\bclass\b", r"\bstruct\b",
@@ -134,7 +134,7 @@ class Highlighter(QSyntaxHighlighter):
 
         # Data types mapping
         data_types = [
-            r"\bint\b", r"\bfloat\b", r"\breal\b", r"\bstring\b", r"\bbool\b", r"\bchar\b",
+            r"\bint\b", r"\bfloat\b", r"\bstring\b", r"\bbool\b", r"\bchar\b",
             r"\bdouble\b", r"\blong\b", r"\bshort\b", r"\bvoid\b", r"\bauto\b",
             r"\bsigned\b", r"\bunsigned\b", r"\bwchar_t\b"
         ]

@@ -122,9 +122,17 @@ class SCANNER():
         while not self.EOF_FLAG:
             state = State.START # state of current lexeme
             current_lexem = '' # It will store the current lexeme
+            
+            # this will store current line and  current column
+            token_line = self.line_no
+            token_col = self.col_no
 
             # Internal loop: builds ONE token (Automaton)
             while state != State.DONE and not self.EOF_FLAG:
+                if current_lexem == '':
+                    token_line = self.line_no
+                    token_col = self.col_no
+                
                 # get the next character
                 char = self._get_next_char()
 
@@ -231,7 +239,7 @@ class SCANNER():
                                         current_lexem += self._get_next_char()
                                         self.list_tokens.append((TokenType.AND, current_lexem))
                                     else:
-                                        self.list_tokens.append((TokenType.ERROR, current_lexem))
+                                        self.list_tokens.append((TokenType.ERROR, current_lexem, token_line, token_col))
                                     state = State.DONE
                                     
                                 case '|':
@@ -239,7 +247,7 @@ class SCANNER():
                                         current_lexem += self._get_next_char()
                                         self.list_tokens.append((TokenType.OR, current_lexem))
                                     else:
-                                        self.list_tokens.append((TokenType.ERROR, current_lexem))
+                                        self.list_tokens.append((TokenType.ERROR, current_lexem, token_line, token_col))
                                     state = State.DONE
                                     
                                 # --------------------------------------------------------
@@ -290,7 +298,7 @@ class SCANNER():
                                 case _:
                                     # Only mark error if the character is not empty (by EOF)
                                     if current_lexem != '\0':
-                                        self.list_tokens.append((TokenType.ERROR, current_lexem))
+                                        self.list_tokens.append((TokenType.ERROR, current_lexem, token_line, token_col))
                                     state = State.DONE
 
                     # --------------------------------------------------------
@@ -362,7 +370,7 @@ class SCANNER():
                             state = State.DONE
                         elif char == '\0':
                             # Manejo de error léxico: fin de archivo sin cerrar comentario
-                            self.list_tokens.append((TokenType.ERROR, current_lexem))
+                            self.list_tokens.append((TokenType.ERROR, current_lexem, token_line, token_col))
                             state = State.DONE
 
                     # --------------------------------------------------------
@@ -381,7 +389,7 @@ class SCANNER():
                             state = State.DONE
                         elif char == '\0' or char == '\n':
                             # Error: la cadena no se cerró antes del fin de línea o archivo
-                            self.list_tokens.append((TokenType.ERROR, current_lexem))
+                            self.list_tokens.append((TokenType.ERROR, current_lexem, token_line, token_col))
                             state = State.DONE
 
                     # --- ESTADO INCHAR ---
@@ -393,7 +401,7 @@ class SCANNER():
                             state = State.DONE
                         elif char == '\0' or char == '\n':
                             # Error: el caracter no se cerró
-                            self.list_tokens.append((TokenType.ERROR, current_lexem))
+                            self.list_tokens.append((TokenType.ERROR, current_lexem, token_line, token_col))
                             state = State.DONE
 
         # ============================================================
@@ -405,7 +413,13 @@ class SCANNER():
         # mejorada para mayor legibilidad humana.
         # ============================================================
         with open("tokens.txt", "w", encoding='utf-8') as file:
-            file.write(f"{'TOKEN':<20}\tLEXEMA\n")
-            file.write("-" * 45 + "\n")
+            file.write(f"{'TOKEN':<20}\t{'LEXEMA':<15}\tPOSICIÓN\n")
+            file.write("-" * 55 + "\n")
             for token in self.list_tokens:
-                file.write(f"{token[0].name:<20}\t{token[1]}\n")
+                # Si es un error y tiene 4 elementos (trae línea y columna)
+                if token[0] == TokenType.ERROR and len(token) == 4:
+                    # token[2] es la línea, token[3] es la columna
+                    file.write(f"{token[0].name:<20}\t{token[1]:<15}\tLn {token[2]},Col {token[3]}\n")
+                else:
+                    # Tokens normales (sin línea y columna)
+                    file.write(f"{token[0].name:<20}\t{token[1]}\n")

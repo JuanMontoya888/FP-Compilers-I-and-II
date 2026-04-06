@@ -1,8 +1,8 @@
-TOKEN               	LEXEMA
----------------------------------------------
+TOKEN               	LEXEMA         	POSICIÓN
+-------------------------------------------------------
 MAIN                	main
 ID                  	sum
-ERROR               	@
+ERROR               	@              	Ln 1,Col 9
 ID                  	r
 NUM_FLOAT           	3.14
 PLUS                	+
@@ -13,7 +13,7 @@ LBRACE              	{
 NUM_FLOAT           	32.
 ID                  	algo
 NUM_FLOAT           	34.34
-ERROR               	.
+ERROR               	.              	Ln 3,Col 6
 NUM_FLOAT           	34.34
 LBRACE              	{
 INT                 	int

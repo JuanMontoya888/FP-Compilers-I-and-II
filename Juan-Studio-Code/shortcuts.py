@@ -56,6 +56,7 @@ class Shortcuts:
         # Logic to manipulate the editor's workspace tabs.
         # ==========================================
         QShortcut(QKeySequence("Ctrl+W"), self.parent).activated.connect(self.close_current_tab)
+        QShortcut(QKeySequence("Ctrl+Tab"), self.parent).activated.connect(self.change_tab)
 
         # ==========================================
         # EXECUTION AND VISIBILITY
@@ -67,6 +68,27 @@ class Shortcuts:
         # Show/Hide Terminal (Ctrl+` and Ctrl+J as alternative)
         QShortcut(QKeySequence("Ctrl+`"), self.parent).activated.connect(self.toggle_terminal)
         QShortcut(QKeySequence("Ctrl+J"), self.parent).activated.connect(self.toggle_terminal)
+
+    # =====================================================================
+    # METHOD:  change_tab
+    # What it does: change the current tab to the next
+    # How it interacts: Connects to the editor component
+    # =====================================================================
+    def change_tab(self):
+        # Get current tabs
+        count = self.editor.tabs.count()
+
+        # if current tabs size is 1 there's no where to change
+        if count <= 1:
+            return
+
+        # Get current tab and calculate next
+        current = self.editor.tabs.currentIndex()
+        next_index = (current + 1) % count
+
+        # Set next index
+        self.editor.tabs.setCurrentIndex(next_index)
+
 
 
     # =====================================================================

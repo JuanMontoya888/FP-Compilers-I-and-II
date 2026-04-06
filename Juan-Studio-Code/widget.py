@@ -231,7 +231,7 @@ if __name__ == "__main__":
         widget = Widget()
         widget.showMaximized()
         sys.exit(app.exec())
-    except Exception as e:
+    except Exception:
         # Diagnostic display for catastrophic errors
         print("\n" + "="*60)
         print("CRITICAL ERROR: THE APPLICATION FAILED TO START")
