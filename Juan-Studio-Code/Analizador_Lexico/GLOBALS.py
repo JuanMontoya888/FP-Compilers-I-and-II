@@ -88,4 +88,5 @@ class State(Enum):
     INCOMMENT_BLOCK = auto()  # Dentro de comentario /* */
     INSTRING = auto()         # Dentro de string ""
     INCHAR = auto()           # Dentro de char ''
+    INERROR = auto()
     DONE = auto()             # Terminó de leer el token

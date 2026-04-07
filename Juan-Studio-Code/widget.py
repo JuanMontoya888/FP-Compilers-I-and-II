@@ -156,7 +156,7 @@ class Widget(QWidget):
         self.v_splitter.addWidget(self.ui.tabWidget)
 
         # Terminal injection
-        self.terminal_manager = TerminalManager()
+        self.terminal_manager = TerminalManager(main_app=self)
         self.v_splitter.addWidget(self.terminal_manager)
 
         # Initialize with collapsed console

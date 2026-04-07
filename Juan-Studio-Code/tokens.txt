@@ -1,8 +1,8 @@
-TOKEN               	LEXEMA         	POSICIÓN
+TOKEN               	LEXEME         	POSITION
 -------------------------------------------------------
 MAIN                	main
 ID                  	sum
-ERROR               	@              	Ln 1,Col 9
+ERROR               	@              	Ln 1, Col 9
 ID                  	r
 NUM_FLOAT           	3.14
 PLUS                	+
@@ -10,10 +10,10 @@ MAIN                	main
 RPAREN              	)
 IF                  	if
 LBRACE              	{
-NUM_FLOAT           	32.
+ERROR               	32.            	Ln 1, Col 25
 ID                  	algo
 NUM_FLOAT           	34.34
-ERROR               	.              	Ln 3,Col 6
+ERROR               	.              	Ln 2, Col 6
 NUM_FLOAT           	34.34
 LBRACE              	{
 INT                 	int

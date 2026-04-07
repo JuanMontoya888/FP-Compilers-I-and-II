@@ -1,8 +1,7 @@
 from PySide6.QtWidgets import QTabWidget, QPlainTextEdit
 from PySide6.QtCore import QProcess, Qt, QThread, Signal
-from PySide6.QtGui import QTextCursor
-import os
-import sys
+from PySide6.QtGui import QTextCursor, QTextCharFormat, QColor
+import os, sys, re
 
 # =====================================================================
 # BACKEND MODULE INTEGRATION
@@ -82,9 +81,12 @@ class TerminalManager(QTabWidget):
     # and initializes the main interactive shell (PowerShell) and
     # read-only tabs for compiler analysis phases.
     # =====================================================================
-    def __init__(self, parent=None):
+    def __init__(self, main_app, parent=None):
         super().__init__(parent)
-
+        
+        # reference to principal class
+        self.main_app = main_app
+        
         self.setObjectName("bottomTabs")
 
         # Initialize the interactive system terminal
@@ -116,10 +118,42 @@ class TerminalManager(QTabWidget):
         self.errores = QPlainTextEdit()
         self.setup_analysis_tab(self.errores, "Error Console...\n")
         self.addTab(self.errores, "Errors")
-
+        
+        self.errores.viewport().setCursor(Qt.PointingHandCursor)
+        # jump to error method
+        self.errores.cursorPositionChanged.connect(self.jump_to_error)
         # Inject custom keyboard handling logic
         self.terminal_edit.keyPressEvent = self.terminal_keyPressEvent
 
+    def jump_to_error(self):
+        # 1. Obtener la línea de texto donde el usuario hizo clic en la terminal
+        cursor = self.errores.textCursor()
+        line_text = cursor.block().text()
+
+        # 2. Buscar el patrón "Ln X, Col Y" usando Regex
+        match = re.search(r"Ln\s+(\d+),\s*Col\s+(\d+)", line_text)
+        
+        # 3. Verificamos que encontró el texto Y que tenemos acceso al main_app
+        if match and self.main_app:
+            target_line = int(match.group(1)) - 1
+            target_col = int(match.group(2)) - 1
+
+            # 4. Obtener el editor actual desde el orquestador principal
+            current_index = self.main_app.editor_manager.tabs.currentIndex() 
+            if current_index >= 0:
+                current_page = self.main_app.editor_manager.tabs.widget(current_index)
+                editor = current_page.editor
+
+                # 5. Mover el cursor en el editor principal
+                editor_cursor = editor.textCursor()
+                editor_cursor.movePosition(QTextCursor.Start)
+                editor_cursor.movePosition(QTextCursor.Down, QTextCursor.MoveAnchor, target_line)
+                editor_cursor.movePosition(QTextCursor.Right, QTextCursor.MoveAnchor, target_col)
+                
+                # Aplicar el nuevo cursor y dar el foco
+                editor.setTextCursor(editor_cursor)
+                editor.setFocus()
+                editor.highlight_current_line()
 
     # =====================================================================
     # UTILITY METHOD: setup_analysis_tab
@@ -278,7 +312,7 @@ class TerminalManager(QTabWidget):
 
     def on_lexical_finished(self, resultado, error):
         """This function is called automatically when LexerWorker finishes."""
-        
+                
         # Early return if there is some problem
         if error:
             self.lexico_output.appendPlainText(f"\nCRITICAL ERROR DURING ANALYSIS:\n{error}")
@@ -294,9 +328,20 @@ class TerminalManager(QTabWidget):
             # First time it will clear terminal, when starts analyzing 
             # a new code, and then will append all errors
             self.errores.clear()
+            
+            fmt_titulo = QTextCharFormat()
+            fmt_titulo.setForeground(QColor("#AAAAAA")) # Gris claro para el título
+
+            fmt_error = QTextCharFormat()
+            fmt_error.setForeground(QColor("#ff5555")) # Rojo tipo consola de errores
+
+            # get cursos errores terminal    
+            cursor_terminal = self.errores.textCursor()
+        
+            
             self.errores.appendPlainText("\tError in lexical analysis ...\n")
             for err in errors:
-                self.errores.appendPlainText(f"{err.strip()}")
+                cursor_terminal.insertText(f"{err.strip()}\n", fmt_error)
         
         
         # Finally set all text to lexico_output
