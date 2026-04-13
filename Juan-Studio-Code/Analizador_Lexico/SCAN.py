@@ -191,11 +191,9 @@ class SCANNER():
                                     if current_lexem == '\0':
                                         self.list_tokens.append((TokenType.ENDFILE, "EOF"))
                                     
-                                # --- OPERADORES COMPUESTOS IGNORANDO ESPACIOS ---
                                 case '+':
                                     next_char, skip_count = self._peek_next_non_whitespace()
                                     if next_char == '+':
-                                        # Consumimos todos los espacios y el segundo '+'
                                         for _ in range(skip_count + 1): self._get_next_char()
                                         self.list_tokens.append((TokenType.INC, "++"))
                                     else:
@@ -269,17 +267,16 @@ class SCANNER():
                                     next_char, skip_count = self._peek_next_non_whitespace()
                                     if next_char == '/':
                                         for _ in range(skip_count + 1): self._get_next_char()
-                                        current_lexem = "//" # Guardamos limpio sin los saltos intermedios
+                                        current_lexem = "//" 
                                         state = State.INCOMMENT_LINE
                                     elif next_char == '*':
                                         for _ in range(skip_count + 1): self._get_next_char()
-                                        current_lexem = "/*" # Guardamos limpio
+                                        current_lexem = "/*" 
                                         state = State.INCOMMENT_BLOCK
                                     else:
                                         self.list_tokens.append((TokenType.OVER, current_lexem))
                                         state = State.DONE
                                         
-                                # --- OPERADORES DE 1 CARACTER (Quedan Igual) ---
                                 case '*':
                                     self.list_tokens.append((TokenType.TIMES, current_lexem))
                                     state = State.DONE
