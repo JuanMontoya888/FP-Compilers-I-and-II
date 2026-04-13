@@ -90,3 +90,4 @@ class State(Enum):
     INCHAR = auto()           # Dentro de char ''
     INERROR = auto()
     DONE = auto()             # Terminó de leer el token
+    

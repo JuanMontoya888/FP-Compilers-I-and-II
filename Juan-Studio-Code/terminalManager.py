@@ -317,16 +317,15 @@ class TerminalManager(QTabWidget):
         if error:
             self.lexico_output.appendPlainText(f"\nCRITICAL ERROR DURING ANALYSIS:\n{error}")
             return
-        
             
-        # first split for lines
-        li = resultado.split("\n")
-        # get lines where exists errors
-        errors = [lin for lin in li if lin.startswith("ERROR")]
+        # Separar todo el texto en una lista de líneas
+        lineas = resultado.split("\n")
+        
+        # Filtrar solo las líneas que tienen errores para la consola inferior
+        errors = [lin for lin in lineas if lin.startswith("ERROR")]
         
         if len(errors) > 0:
-            # First time it will clear terminal, when starts analyzing 
-            # a new code, and then will append all errors
+            # Limpiar la terminal antes de imprimir nuevos errores
             self.errores.clear()
             
             fmt_titulo = QTextCharFormat()
@@ -335,17 +334,47 @@ class TerminalManager(QTabWidget):
             fmt_error = QTextCharFormat()
             fmt_error.setForeground(QColor("#ff5555")) # Rojo tipo consola de errores
 
-            # get cursos errores terminal    
+            # Obtener cursor y escribir título con formato
             cursor_terminal = self.errores.textCursor()
-        
+            cursor_terminal.insertText("\tError in lexical analysis ...\n\n", fmt_titulo)
             
-            self.errores.appendPlainText("\tError in lexical analysis ...\n")
+            # Escribir los errores en rojo
             for err in errors:
                 cursor_terminal.insertText(f"{err.strip()}\n", fmt_error)
         
         
-        # Finally set all text to lexico_output
-        self.lexico_output.appendPlainText(resultado)
+        # Filtrar el resultado final para la pestaña de Léxico
+        # Excluimos líneas que empiecen con ERROR o COMENTARIOS usando una tupla
+        final_result_list = []
+        dentro_de_comentario = False
+
+        for linea in lineas:
+            # 1. Si detectamos que inicia un bloque de comentario
+            if linea.startswith("COMMENT_BLOCK"):
+                # Si el comentario NO se cierra en esta misma línea, encendemos la alarma
+                if "*/" not in linea:
+                    dentro_de_comentario = True
+                continue  # Ignoramos la línea del encabezado COMMENT_BLOCK
+
+            # 2. Si estamos atrapados dentro de las líneas del comentario multilínea
+            if dentro_de_comentario:
+                # Revisamos si en esta línea por fin se cierra el comentario
+                if "*/" in linea:
+                    dentro_de_comentario = False # Apagamos la alarma
+                continue  # Ignoramos todo el texto basura del comentario
+
+            # También omitimos los errores y comentarios de una línea normales
+            if linea.startswith("ERROR") or linea.startswith("COMMENT_LINE"):
+                continue
+
+            # 4. Si llegamos aquí, es una línea de tokens limpios y válidos
+            final_result_list.append(linea)
+        
+        # Convertir la lista limpia de vuelta a un String de texto
+        texto_limpio = "\n".join(final_result_list)
+        
+        self.lexico_output.clear() # Limpiamos por si había análisis anteriores
+        self.lexico_output.appendPlainText(texto_limpio)
 
 
     def execute_syntactic(self, source_code):

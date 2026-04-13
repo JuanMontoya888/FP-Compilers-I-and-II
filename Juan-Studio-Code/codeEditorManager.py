@@ -117,7 +117,7 @@ class Highlighter(QSyntaxHighlighter):
 
         # Structural Keywords mapping
         keywords = [
-            r"\bif\b", r"\belse\b", r"\bend\b", r"\bdo\b", r"\bwhile\b",
+            r"\bif\b", r"\belse\b", r"\bend\b", r"\bdo\b", r"\bwhile\b", r"\bthen\b",
             r"\bswitch\b", r"\bcase\b", r"\bmain\b", r"\bcin\b", r"\bcout\b",
             r"\bbreak\b", r"\bcontinue\b", r"\bfor\b", r"\bgoto\b", r"\breturn\b",
             r"\btry\b", r"\bcatch\b", r"\bthrow\b", r"\bclass\b", r"\bstruct\b",

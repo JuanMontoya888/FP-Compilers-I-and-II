@@ -95,6 +95,20 @@ class SCANNER():
             return '\0'
         return self.source[self.pos]
 
+    # =====================================================================
+    # METHOD: _peek_next_non_whitespace
+    # What it does: Looks ahead skipping any space, tab, or newline.
+    # Returns: The next valid character and how many spaces to skip.
+    # =====================================================================
+    def _peek_next_non_whitespace(self):
+        offset = 0
+        while self.pos + offset < len(self.source):
+            char = self.source[self.pos + offset]
+            if char in [' ', '\t', '\n', '\r']:
+                offset += 1
+            else:
+                return char, offset
+        return '\0', offset
 
     # =====================================================================
     # METHOD: _unget_char
@@ -177,81 +191,95 @@ class SCANNER():
                                     if current_lexem == '\0':
                                         self.list_tokens.append((TokenType.ENDFILE, "EOF"))
                                     
+                                # --- OPERADORES COMPUESTOS IGNORANDO ESPACIOS ---
                                 case '+':
-                                    if self._peek_next_char() == '+':
-                                        current_lexem += self._get_next_char()
-                                        self.list_tokens.append((TokenType.INC, current_lexem))
+                                    next_char, skip_count = self._peek_next_non_whitespace()
+                                    if next_char == '+':
+                                        # Consumimos todos los espacios y el segundo '+'
+                                        for _ in range(skip_count + 1): self._get_next_char()
+                                        self.list_tokens.append((TokenType.INC, "++"))
                                     else:
                                         self.list_tokens.append((TokenType.PLUS, current_lexem))
                                     state = State.DONE
                                     
                                 case '-':
-                                    if self._peek_next_char() == '-':
-                                        current_lexem += self._get_next_char()
-                                        self.list_tokens.append((TokenType.DEC, current_lexem))
+                                    next_char, skip_count = self._peek_next_non_whitespace()
+                                    if next_char == '-':
+                                        for _ in range(skip_count + 1): self._get_next_char()
+                                        self.list_tokens.append((TokenType.DEC, "--"))
                                     else:
                                         self.list_tokens.append((TokenType.MINUS, current_lexem))
                                     state = State.DONE
                                     
                                 case '=':
-                                    if self._peek_next_char() == '=':
-                                        current_lexem += self._get_next_char()
-                                        self.list_tokens.append((TokenType.EQ, current_lexem))
+                                    next_char, skip_count = self._peek_next_non_whitespace()
+                                    if next_char == '=':
+                                        for _ in range(skip_count + 1): self._get_next_char()
+                                        self.list_tokens.append((TokenType.EQ, "=="))
                                     else:
                                         self.list_tokens.append((TokenType.ASSIGN, current_lexem))
                                     state = State.DONE
 
                                 case '<':
-                                    if self._peek_next_char() == '=':
-                                        current_lexem += self._get_next_char()
-                                        self.list_tokens.append((TokenType.LTEQ, current_lexem))
+                                    next_char, skip_count = self._peek_next_non_whitespace()
+                                    if next_char == '=':
+                                        for _ in range(skip_count + 1): self._get_next_char()
+                                        self.list_tokens.append((TokenType.LTEQ, "<="))
                                     else:
                                         self.list_tokens.append((TokenType.LT, current_lexem))
                                     state = State.DONE
                                     
                                 case '>':
-                                    if self._peek_next_char() == '=':
-                                        current_lexem += self._get_next_char()
-                                        self.list_tokens.append((TokenType.GTEQ, current_lexem))
+                                    next_char, skip_count = self._peek_next_non_whitespace()
+                                    if next_char == '=':
+                                        for _ in range(skip_count + 1): self._get_next_char()
+                                        self.list_tokens.append((TokenType.GTEQ, ">="))
                                     else:
                                         self.list_tokens.append((TokenType.GT, current_lexem))
                                     state = State.DONE
                                     
                                 case '!':
-                                    if self._peek_next_char() == '=':
-                                        current_lexem += self._get_next_char()
-                                        self.list_tokens.append((TokenType.NEQ, current_lexem))
+                                    next_char, skip_count = self._peek_next_non_whitespace()
+                                    if next_char == '=':
+                                        for _ in range(skip_count + 1): self._get_next_char()
+                                        self.list_tokens.append((TokenType.NEQ, "!="))
                                     else:
                                         self.list_tokens.append((TokenType.NOT, current_lexem))
                                     state = State.DONE
 
                                 case '&':
-                                    if self._peek_next_char() == '&':
-                                        current_lexem += self._get_next_char()
-                                        self.list_tokens.append((TokenType.AND, current_lexem))
+                                    next_char, skip_count = self._peek_next_non_whitespace()
+                                    if next_char == '&':
+                                        for _ in range(skip_count + 1): self._get_next_char()
+                                        self.list_tokens.append((TokenType.AND, "&&"))
                                     else:
                                         self.list_tokens.append((TokenType.ERROR, current_lexem, token_line, token_col))
                                     state = State.DONE
                                     
                                 case '|':
-                                    if self._peek_next_char() == '|':
-                                        current_lexem += self._get_next_char()
-                                        self.list_tokens.append((TokenType.OR, current_lexem))
+                                    next_char, skip_count = self._peek_next_non_whitespace()
+                                    if next_char == '|':
+                                        for _ in range(skip_count + 1): self._get_next_char()
+                                        self.list_tokens.append((TokenType.OR, "||"))
                                     else:
                                         self.list_tokens.append((TokenType.ERROR, current_lexem, token_line, token_col))
                                     state = State.DONE
 
                                 case '/':
-                                    if self._peek_next_char() == '/':
-                                        current_lexem += self._get_next_char()
+                                    next_char, skip_count = self._peek_next_non_whitespace()
+                                    if next_char == '/':
+                                        for _ in range(skip_count + 1): self._get_next_char()
+                                        current_lexem = "//" # Guardamos limpio sin los saltos intermedios
                                         state = State.INCOMMENT_LINE
-                                    elif self._peek_next_char() == '*':
-                                        current_lexem += self._get_next_char()
+                                    elif next_char == '*':
+                                        for _ in range(skip_count + 1): self._get_next_char()
+                                        current_lexem = "/*" # Guardamos limpio
                                         state = State.INCOMMENT_BLOCK
                                     else:
                                         self.list_tokens.append((TokenType.OVER, current_lexem))
                                         state = State.DONE
                                         
+                                # --- OPERADORES DE 1 CARACTER (Quedan Igual) ---
                                 case '*':
                                     self.list_tokens.append((TokenType.TIMES, current_lexem))
                                     state = State.DONE
@@ -286,7 +314,7 @@ class SCANNER():
                                     if current_lexem != '\0':
                                         self.list_tokens.append((TokenType.ERROR, current_lexem, token_line, token_col))
                                     state = State.DONE
-
+                    
                     # -----------------------------------------------------
                     # SUB-STATE: Identifiers and Reserved Words
                     # -----------------------------------------------------
