@@ -13,16 +13,25 @@ from PySide6.QtCore import QModelIndex
 # - Model-View: Implements QFileSystemModel to mirror the physical storage.
 # - Menu Factory: Imperatively constructs the context-aware top menus.
 # - Controller/Proxy: Bridges the file explorer, code editor, and terminal.
-# =====================================================================
+from PySide6.QtWidgets import QFileIconProvider
+from PySide6.QtGui import QIcon
+from PySide6.QtCore import QFileInfo
+
+class CustomIconProvider(QFileIconProvider):
+    def icon(self, arg):
+        if isinstance(arg, QFileInfo):
+            if arg.isDir():
+                return QIcon(os.path.join("icons", "new_folder.svg"))
+            else:
+                return QIcon(os.path.join("icons", "open_file.svg"))
+        if arg == QFileIconProvider.Folder:
+            return QIcon(os.path.join("icons", "new_folder.svg"))
+        elif arg == QFileIconProvider.File:
+            return QIcon(os.path.join("icons", "open_file.svg"))
+        return super().icon(arg)
+
 class TreeManager:
 
-    # =====================================================================
-    # METHOD: __init__
-    # What it does: Sets up the file system model and binds tree view properties.
-    # What components it uses: QFileSystemModel, QTreeView, main_app state.
-    # How it interacts: Maps the current working directory to the lateral
-    # explorer and binds toolbar buttons to the setup_buttons logic.
-    # ============================================================
     def __init__(self, tree_view, ui, editor_manager, terminal_manager, main_app):
         self.tree = tree_view
         self.editor_manager = editor_manager
@@ -31,6 +40,8 @@ class TreeManager:
 
         # System file model configuration
         self.model = QFileSystemModel()
+        self.icon_provider = CustomIconProvider()
+        self.model.setIconProvider(self.icon_provider)
         self.model.setRootPath(self.main_app.current_path)
         self.tree.setModel(self.model)
         self.tree.setRootIndex(self.model.index(self.main_app.current_path))

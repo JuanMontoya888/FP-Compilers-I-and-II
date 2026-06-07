@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QTabWidget, QPlainTextEdit
+from PySide6.QtWidgets import QTabWidget, QPlainTextEdit, QTreeWidget, QTreeWidgetItem
 from PySide6.QtCore import QProcess, Qt, QThread, Signal
 from PySide6.QtGui import QTextCursor, QTextCharFormat, QColor
 import os, sys, re
@@ -24,21 +24,13 @@ from SCAN import SCANNER
 # - Emit results via Qt Signals once the background task is complete.
 # =====================================================================
 class LexerWorker(QThread):
-    # Signal that sends two strings upon completion: (result_content, error_message)
-    finished_signal = Signal(str, str)
+    # Signal that sends the list of tokens and an error message: (tokens_list, error_message)
+    finished_signal = Signal(list, str)
 
     def __init__(self, source_code):
         super().__init__()
         self.source_code = source_code
 
-    # =====================================================================
-    # CORE EXECUTION METHOD: run
-    # What it does: Serves as the entry point for the worker thread.
-    # What components it uses: SCANNER class (from SCAN module) and File I/O.
-    # How it interacts: It instantiates the scanner, triggers the token
-    # generation, reads the resulting 'tokens.txt', and emits the
-    # finished_signal back to the Main UI.
-    # =====================================================================
     def run(self):
         """This method executes automatically in the background."""
         try:
@@ -46,18 +38,11 @@ class LexerWorker(QThread):
             scanner = SCANNER(self.source_code)
             scanner.get_token()
 
-            # Read the resulting output file
-            resultado_txt_path = "tokens.txt"
-            if os.path.exists(resultado_txt_path):
-                with open(resultado_txt_path, 'r', encoding='utf-8') as f:
-                    resultado = f.read()
-                # Emit successful result with an empty error string
-                self.finished_signal.emit(resultado, "")
-            else:
-                self.finished_signal.emit("", "ERROR: The file 'tokens.txt' was not generated.")
+            # Emit successful result with the actual tokens list
+            self.finished_signal.emit(scanner.list_tokens, "")
         except Exception as e:
             # Catch unexpected exceptions and propagate the error message
-            self.finished_signal.emit("", str(e))
+            self.finished_signal.emit([], str(e))
 
 
 # =====================================================================
@@ -95,12 +80,50 @@ class TerminalManager(QTabWidget):
         self.addTab(self.terminal_edit, "Terminal")
 
         # Initialize read-only views for compiler stages
-        self.lexico_output = QPlainTextEdit()
-        self.setup_analysis_tab(self.lexico_output, "Waiting for lexical analysis execution...\n")
+        self.lexico_output = QTreeWidget()
+        self.lexico_output.setHeaderLabels(["Token Type", "Lexeme", "Line/Column"])
+        self.lexico_output.setStyleSheet("""
+            QTreeWidget {
+                background-color: #1e1e1e;
+                color: #d4d4d4;
+                border: 1px solid #333333;
+            }
+            QTreeWidget::item:hover {
+                background-color: #2a2d2e;
+            }
+            QTreeWidget::item:selected {
+                background-color: #094771;
+            }
+            QHeaderView::section {
+                background-color: #252526;
+                color: #cccccc;
+                border: 1px solid #333333;
+                padding: 4px;
+            }
+        """)
         self.addTab(self.lexico_output, "Lexical Analysis")
 
-        self.sintactico_output = QPlainTextEdit()
-        self.setup_analysis_tab(self.sintactico_output, "Waiting for syntax analysis execution...\n")
+        self.sintactico_output = QTreeWidget()
+        self.sintactico_output.setHeaderLabels(["Syntax Node", "Value / Code", "Line/Column"])
+        self.sintactico_output.setStyleSheet("""
+            QTreeWidget {
+                background-color: #1e1e1e;
+                color: #d4d4d4;
+                border: 1px solid #333333;
+            }
+            QTreeWidget::item:hover {
+                background-color: #2a2d2e;
+            }
+            QTreeWidget::item:selected {
+                background-color: #094771;
+            }
+            QHeaderView::section {
+                background-color: #252526;
+                color: #cccccc;
+                border: 1px solid #333333;
+                padding: 4px;
+            }
+        """)
         self.addTab(self.sintactico_output, "Syntax Analysis")
 
         self.semantico_output = QPlainTextEdit()
@@ -115,45 +138,136 @@ class TerminalManager(QTabWidget):
         self.setup_analysis_tab(self.tabla, "Symbol Table...\n")
         self.addTab(self.tabla, "Symbol Table")
 
-        self.errores = QPlainTextEdit()
-        self.setup_analysis_tab(self.errores, "Error Console...\n")
+        self.errores = QTreeWidget()
+        self.errores.setObjectName("errorTreeWidget")
+        self.errores.setHeaderLabels(["Error Type / Description", "Position"])
         self.addTab(self.errores, "Errors")
-        
-        self.errores.viewport().setCursor(Qt.PointingHandCursor)
-        # jump to error method
-        self.errores.cursorPositionChanged.connect(self.jump_to_error)
-        # Inject custom keyboard handling logic
+        self.errores.itemDoubleClicked.connect(self.jump_to_error_tree)
         self.terminal_edit.keyPressEvent = self.terminal_keyPressEvent
 
-    def jump_to_error(self):
-        # 1. Obtener la línea de texto donde el usuario hizo clic en la terminal
-        cursor = self.errores.textCursor()
-        line_text = cursor.block().text()
+        # Corner widgets setup
+        from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton
+        self.corner_container = QWidget()
+        self.corner_layout = QHBoxLayout(self.corner_container)
+        self.corner_layout.setContentsMargins(0, 0, 0, 0)
+        self.corner_layout.setSpacing(5)
 
-        # 2. Buscar el patrón "Ln X, Col Y" usando Regex
-        match = re.search(r"Ln\s+(\d+),\s*Col\s+(\d+)", line_text)
+        self.btn_visualize_ast = QPushButton("Visualize Graphical AST")
+        self.btn_visualize_ast.setCursor(Qt.PointingHandCursor)
+        self.btn_visualize_ast.setStyleSheet("""
+            QPushButton {
+                background-color: #2d2d2d; color: #cccccc; border: 1px solid #333333; padding: 2px 10px; border-radius: 2px;
+            }
+            QPushButton:hover { background-color: #3d3d3d; }
+        """)
+        self.btn_visualize_ast.clicked.connect(self.show_ast_visualization)
+        self.btn_visualize_ast.setVisible(False)  # Hidden by default
+
+        self.btn_copy_terminal = QPushButton("Copy Result")
+        self.btn_copy_terminal.setCursor(Qt.PointingHandCursor)
+        self.btn_copy_terminal.setStyleSheet("""
+            QPushButton {
+                background-color: #2d2d2d; color: #cccccc; border: 1px solid #333333; padding: 2px 10px; border-radius: 2px;
+            }
+            QPushButton:hover { background-color: #3d3d3d; }
+        """)
+        self.btn_copy_terminal.clicked.connect(self.copy_current_tab)
+
+        self.corner_layout.addWidget(self.btn_visualize_ast)
+        self.corner_layout.addWidget(self.btn_copy_terminal)
+
+        self.setCornerWidget(self.corner_container, Qt.TopRightCorner)
+        self.currentChanged.connect(self._on_tab_changed)
+
+    def _on_tab_changed(self, index):
+        # Only show AST Visualization button when Syntax Analysis is the active tab
+        is_syntax_tab = (self.widget(index) == self.sintactico_output)
+        self.btn_visualize_ast.setVisible(is_syntax_tab)
+
+    def copy_current_tab(self):
+        """Copia el contenido de la pestaña actual al portapapeles."""
+        from PySide6.QtWidgets import QApplication
+        current_widget = self.currentWidget()
         
-        # 3. Verificamos que encontró el texto Y que tenemos acceso al main_app
+        texto_copiar = ""
+        if isinstance(current_widget, QPlainTextEdit):
+            texto_copiar = current_widget.toPlainText()
+        elif isinstance(current_widget, QTreeWidget):
+            def recurse_tree(item, level=0):
+                res = "  " * level + f"|-- {item.text(0)}: {item.text(1)} ({item.text(2)})\n"
+                for i in range(item.childCount()):
+                    res += recurse_tree(item.child(i), level + 1)
+                return res
+                
+            for i in range(current_widget.topLevelItemCount()):
+                texto_copiar += recurse_tree(current_widget.topLevelItem(i))
+                
+        if texto_copiar:
+            QApplication.clipboard().setText(texto_copiar)
+
+    def jump_to_error_tree(self, item, column):
+        pos_str = item.text(1)
+        import re
+        match = re.search(r"Ln\s+(\d+),\s*Col\s+(\d+)", pos_str)
+        
         if match and self.main_app:
             target_line = int(match.group(1)) - 1
             target_col = int(match.group(2)) - 1
 
-            # 4. Obtener el editor actual desde el orquestador principal
             current_index = self.main_app.editor_manager.tabs.currentIndex() 
             if current_index >= 0:
                 current_page = self.main_app.editor_manager.tabs.widget(current_index)
                 editor = current_page.editor
 
-                # 5. Mover el cursor en el editor principal
+                from PySide6.QtGui import QTextCursor
                 editor_cursor = editor.textCursor()
                 editor_cursor.movePosition(QTextCursor.Start)
                 editor_cursor.movePosition(QTextCursor.Down, QTextCursor.MoveAnchor, target_line)
                 editor_cursor.movePosition(QTextCursor.Right, QTextCursor.MoveAnchor, target_col)
                 
-                # Aplicar el nuevo cursor y dar el foco
                 editor.setTextCursor(editor_cursor)
                 editor.setFocus()
                 editor.highlight_current_line()
+
+    # =====================================================================
+    # METHOD: show_ast_visualization
+    # What it does: Slot triggered by the Visualize AST button. Uses the in-memory
+    # AST object to generate and display a stylized HTML visualization dialog.
+    # What components it uses: ASTHtmlGenerator, ASTVisualizerDialog.
+    # How it interacts: Opens a pop-up window containing the graphical AST.
+    # =====================================================================
+    def show_ast_visualization(self):
+        from PySide6.QtWidgets import QMessageBox
+        
+        if not hasattr(self, 'current_ast') or not self.current_ast:
+            QMessageBox.warning(self, "No AST Available", "AST tree not found in memory. Please run a successful Syntax Analysis first.")
+            return
+            
+        try:
+            # Import visualization logic
+            import sys
+            import os
+            sys.path.append(os.path.join(os.getcwd(), 'Analizador_Sintactico'))
+            
+            # Make sure astVisualizer is importable
+            from astVisualizer import ASTHtmlGenerator, ASTVisualizerDialog
+            
+            # Generate the HTML
+            html_content = ASTHtmlGenerator.arbol_a_html(self.current_ast, getattr(self, 'current_syntax_errors', []))
+            
+            # Instantiate and display the dialog persistently
+            if not hasattr(self, '_ast_visualizer_dialog') or self._ast_visualizer_dialog is None:
+                self._ast_visualizer_dialog = ASTVisualizerDialog(self)
+                
+            self._ast_visualizer_dialog.load_html_content(html_content)
+            self._ast_visualizer_dialog.show()
+            self._ast_visualizer_dialog.raise_()
+            self._ast_visualizer_dialog.activateWindow()
+            
+        except ImportError as e:
+            QMessageBox.critical(self, "Module Error", f"Could not load visualization module: {e}")
+        except Exception as e:
+            QMessageBox.critical(self, "Visualization Error", f"Error launching AST visualizer: {e}")
 
     # =====================================================================
     # UTILITY METHOD: setup_analysis_tab
@@ -296,10 +410,14 @@ class TerminalManager(QTabWidget):
             self.lexico_output.clear()
 
             if not source_code:
-                self.lexico_output.setPlainText("ERROR: No file selected. Open or save a file first.")
+                item = QTreeWidgetItem(self.lexico_output)
+                item.setText(0, "ERROR")
+                item.setText(1, "No file selected. Open or save a file first.")
                 return
 
-            self.lexico_output.appendPlainText(f"Executing lexical analysis on: {source_code}...\n")
+            item = QTreeWidgetItem(self.lexico_output)
+            item.setText(0, "INFO")
+            item.setText(1, f"Executing lexical analysis...")
 
             # Prepare worker by passing the file path/source
             self.lexer_thread = LexerWorker(source_code)
@@ -310,71 +428,42 @@ class TerminalManager(QTabWidget):
             # Start the background worker!
             self.lexer_thread.start()
 
-    def on_lexical_finished(self, resultado, error):
+    def on_lexical_finished(self, tokens_list, error):
         """This function is called automatically when LexerWorker finishes."""
-                
+        self.lexico_output.clear()
+        
         # Early return if there is some problem
         if error:
-            self.lexico_output.appendPlainText(f"\nCRITICAL ERROR DURING ANALYSIS:\n{error}")
+            item = QTreeWidgetItem(self.lexico_output)
+            item.setText(0, "CRITICAL ERROR")
+            item.setText(1, error)
             return
             
-        # Separar todo el texto en una lista de líneas
-        lineas = resultado.split("\n")
+        # Resolver problema de Enum y separar errores léxicos
+        errors = [t for t in tokens_list if hasattr(t[0], 'name') and t[0].name == "ERROR"]
+        valid_tokens = [t for t in tokens_list if not (hasattr(t[0], 'name') and t[0].name in ["ERROR", "COMMENT_LINE", "COMMENT_BLOCK"])]
         
-        # Filtrar solo las líneas que tienen errores para la consola inferior
-        errors = [lin for lin in lineas if lin.startswith("ERROR")]
-        
+        # Poblar QTreeWidget de errores
         if len(errors) > 0:
-            # Limpiar la terminal antes de imprimir nuevos errores
-            self.errores.clear()
-            
-            fmt_titulo = QTextCharFormat()
-            fmt_titulo.setForeground(QColor("#AAAAAA")) # Gris claro para el título
-
-            fmt_error = QTextCharFormat()
-            fmt_error.setForeground(QColor("#ff5555")) # Rojo tipo consola de errores
-
-            # Obtener cursor y escribir título con formato
-            cursor_terminal = self.errores.textCursor()
-            cursor_terminal.insertText("\tError in lexical analysis ...\n\n", fmt_titulo)
-            
-            # Escribir los errores en rojo
-            for err in errors:
-                cursor_terminal.insertText(f"{err.strip()}\n", fmt_error)
+            from PySide6.QtGui import QColor
+            error_color = QColor("#ff5555")
+            for t in errors:
+                line = t[2] if len(t) > 2 else "?"
+                col = t[3] if len(t) > 3 else "?"
+                item = QTreeWidgetItem(self.errores)
+                item.setText(0, f"Lexical Error: Unexpected Token ('{t[1]}')")
+                item.setText(1, f"Ln {line}, Col {col}")
+                item.setForeground(0, error_color)
+                item.setForeground(1, error_color)
         
-        
-        # Filtrar el resultado final para la pestaña de Léxico
-        # Excluimos líneas que empiecen con ERROR o COMENTARIOS usando una tupla
-        final_result_list = []
-        dentro_de_comentario = False
-
-        for linea in lineas:
-            # 1. Si detectamos que inicia un bloque de comentario
-            if linea.startswith("COMMENT_BLOCK"):
-                # Si el comentario NO se cierra en esta misma línea, encendemos la alarma
-                if "*/" not in linea:
-                    dentro_de_comentario = True
-                continue  # Ignoramos la línea del encabezado COMMENT_BLOCK
-
-            # 2. Si estamos atrapados dentro de las líneas del comentario multilínea
-            if dentro_de_comentario:
-                # Revisamos si en esta línea por fin se cierra el comentario
-                if "*/" in linea:
-                    dentro_de_comentario = False # Apagamos la alarma
-                continue  # Ignoramos todo el texto basura del comentario
-
-            # También omitimos los errores y comentarios de una línea normales
-            if linea.startswith("ERROR") or linea.startswith("COMMENT_LINE"):
-                continue
-
-            # 4. Si llegamos aquí, es una línea de tokens limpios y válidos
-            final_result_list.append(linea)
-        
-        # Convertir la lista limpia de vuelta a un String de texto
-        texto_limpio = "\n".join(final_result_list)
-        
-        self.lexico_output.clear() # Limpiamos por si había análisis anteriores
-        self.lexico_output.appendPlainText(texto_limpio)
+        # Poblar pestaña de Léxico SÓLO con tokens válidos
+        for t in valid_tokens:
+            item = QTreeWidgetItem(self.lexico_output)
+            item.setText(0, str(t[0].name) if hasattr(t[0], 'name') else str(t[0]))
+            item.setText(1, str(t[1]))
+            line = t[2] if len(t) > 2 else "?"
+            col = t[3] if len(t) > 3 else "?"
+            item.setText(2, f"Ln {line}, Col {col}")
 
 
     def execute_syntactic(self, source_code):
@@ -383,9 +472,83 @@ class TerminalManager(QTabWidget):
         self.show()
         self.sintactico_output.clear()
 
-        # Simulated AST tree structure
-        resultado_simulado = f"=== SYNTACTIC RESULT ===\nAST Tree for:\n{source_code}"
-        self.sintactico_output.setPlainText(resultado_simulado)
+        if not source_code:
+            return
+
+        import sys
+        sys.path.append(os.path.join(os.getcwd(), 'Analizador_Sintactico'))
+        from analizador_sintactico import Parser, ParserSignals
+        
+        # Initialize memory storage for AST Visualization
+        self.current_ast = None
+        self.current_syntax_errors = []
+        
+        # 1. Run scanner
+        scanner = SCANNER(source_code)
+        scanner.get_token()
+        
+        # 2. Setup signals
+        signals = ParserSignals()
+        
+        self.errores.clear()
+        
+        def handle_error(mensaje, linea, columna):
+            from PySide6.QtWidgets import QTreeWidgetItem
+            from PySide6.QtGui import QColor
+            
+            error_text = f"Syntax Error: {mensaje} (Ln {linea}, Col {columna})"
+            self.current_syntax_errors.append(error_text)
+            
+            item = QTreeWidgetItem(self.errores)
+            item.setText(0, f"Syntax Error: {mensaje}")
+            item.setText(1, f"Ln {linea}, Col {columna}")
+            error_color = QColor("#ff5555")
+            item.setForeground(0, error_color)
+            item.setForeground(1, error_color)
+            
+        def handle_node(nombre, lexema):
+            # La señal node_signal emite cada nodo conforme se crea.
+            pass
+
+        signals.error_signal.connect(handle_error)
+        signals.node_signal.connect(handle_node)
+
+        # 3. Run parser
+        parser = Parser(scanner.list_tokens, signals=signals)
+        ast_root = parser.parse()
+        
+        # Save to memory for visualization
+        self.current_ast = ast_root
+        
+        # 4. Populate QTreeWidget
+        def renderizar_ast_en_ui(self_ref, ast_root, tree_widget):
+            tree_widget.clear() # Limpiar árbol anterior
+            if not ast_root:
+                return
+                
+            def construir_nodos_ui(nodo_datos, parent_ui):
+                item = QTreeWidgetItem(parent_ui)
+                item.setText(0, nodo_datos.name)
+                item.setText(1, str(nodo_datos.value))
+                line_str = f"Ln {nodo_datos.line}, Col {nodo_datos.col}" if str(nodo_datos.line).isdigit() else ""
+                item.setText(2, line_str)
+                
+                for hijo in nodo_datos.children:
+                    construir_nodos_ui(hijo, item)
+
+            root_item = QTreeWidgetItem(tree_widget)
+            root_item.setText(0, ast_root.name)
+            root_item.setText(1, str(ast_root.value))
+            line_str_root = f"Ln {ast_root.line}, Col {ast_root.col}" if str(ast_root.line).isdigit() else ""
+            root_item.setText(2, line_str_root)
+            
+            for child in ast_root.children:
+                construir_nodos_ui(child, root_item)
+                
+            tree_widget.expandAll()
+
+        self.sintactico_output.setHeaderLabels(["Syntax Node", "Value / Code", "Line/Column"])
+        renderizar_ast_en_ui(self, ast_root, self.sintactico_output)
 
     def execute_semantic(self, source_code):
         """Processes code and updates the Semantic tab."""

@@ -26,7 +26,7 @@ class Ui_Widget(object):
         Widget.setEnabled(True)
         Widget.resize(800, 600)
         icon = QIcon()
-        icon.addFile(u"logoJSC.ico", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        icon.addFile(u"logoJSC.ico", QSize(256, 256), QIcon.Mode.Normal, QIcon.State.Off)
         Widget.setWindowIcon(icon)
         Widget.setStyleSheet(u"/* --- ESTILOS GENERALES --- */\n"
 "QWidget {\n"

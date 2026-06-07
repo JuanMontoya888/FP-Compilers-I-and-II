@@ -1,0 +1,37 @@
+/* =====================================================================
+ * CORE STYLESHEET (style.qss)
+ * Centralized global styles for dynamically generated UI components
+ * ===================================================================== */
+
+/* ----------------------------------------------------
+ * ERROR CONSOLE STYLING (QTreeWidget)
+ * ---------------------------------------------------- */
+QTreeWidget#errorTreeWidget {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 13px;
+    border: none;
+}
+
+QTreeWidget#errorTreeWidget QHeaderView::section {
+    background-color: #252526;
+    color: #cccccc;
+    border: 1px solid #333333;
+    padding: 4px;
+}
+
+QTreeWidget#errorTreeWidget::item {
+    padding: 4px;
+    border-radius: 3px;
+}
+
+QTreeWidget#errorTreeWidget::item:hover {
+    background-color: #2a2d2e;
+    color: #ffffff;
+}
+
+QTreeWidget#errorTreeWidget::item:selected {
+    background-color: #37373d;
+    color: #ffffff;
+}

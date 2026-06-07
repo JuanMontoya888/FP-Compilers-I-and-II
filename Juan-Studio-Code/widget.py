@@ -45,6 +45,13 @@ class Widget(QWidget):
         self.current_path =  "C:/Users/Juan/Desktop/" or os.getcwd()
         self.current_file_selected = None
 
+        # Load external stylesheet
+        try:
+            with open(os.path.join(os.path.dirname(__file__), 'style.qss'), 'r', encoding='utf-8') as f:
+                self.setStyleSheet(self.styleSheet() + "\n" + f.read())
+        except Exception as e:
+            print(f"Warning: Could not load style.qss - {e}")
+
         # Execute organized setup sequence
         self.setup_icons()
         self.setup_layout()
@@ -169,6 +176,16 @@ class Widget(QWidget):
         # Final integration into the main layout container
         self.ui.splitter.addWidget(self.v_splitter)
         self.ui.splitter.setSizes([200, 800])
+        
+        # Inject the background logo watermark for the empty workspace
+        current_style = self.styleSheet()
+        self.setStyleSheet(current_style + """
+            QTabWidget#tabWidget::pane {
+                background-image: url(logoJSC.ico);
+                background-position: center;
+                background-repeat: no-repeat;
+            }
+        """)
 
 
     # ============================================================
@@ -211,8 +228,13 @@ class Widget(QWidget):
         # Execution Switch: Trigger backend task based on requested view
         match(tab_index):
             case 1:
+                # Clear terminal
+                self.terminal_manager.errores.clear()
                 # Trigger background lexical processing
                 self.terminal_manager.execute_lexical(self.current_file_selected)
+            case 2:
+                # Trigger syntactic processing
+                self.terminal_manager.execute_syntactic(self.current_file_selected)
 
         # Switch tab index and ensure the widget is visible to the user
         self.terminal_manager.setCurrentIndex(tab_index)
