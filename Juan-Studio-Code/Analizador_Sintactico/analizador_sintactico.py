@@ -116,6 +116,10 @@ class Parser:
     # How it interacts: Resets panic_mode once a safe statement boundary token is reached.
     # =====================================================================
     def synchronize(self):
+        # Seguro anti-bucles: si el token problemático NO es una llave estructural, lo consumimos de inmediato.
+        if self.current_token().tipo not in [TokenType.SEMI, TokenType.RBRACE, TokenType.LBRACE, TokenType.ENDFILE]:
+            self.advance()
+            
         sync_keywords = [
             TokenType.INT, TokenType.FLOAT, TokenType.IF, 
             TokenType.WHILE, TokenType.DO, TokenType.CIN, TokenType.COUT
@@ -378,7 +382,7 @@ class Parser:
         
         if not self.match(TokenType.LBRACE): return None
         then_block = ASTNode("Then Block", line=token.linea, col=token.columna)
-        for s in self.lista_sentencias():
+        for s in self.lista_declaracion():
             if s is not None:
                 then_block.add_child(s)
         if not self.match(TokenType.RBRACE): return None
@@ -389,7 +393,7 @@ class Parser:
             if not self.match(TokenType.LBRACE): return None
             
             else_block = ASTNode("Else Block", line=el_token.linea, col=el_token.columna)
-            for s in self.lista_sentencias():
+            for s in self.lista_declaracion():
                 if s is not None:
                     else_block.add_child(s)
                     
@@ -420,7 +424,7 @@ class Parser:
         
         if not self.match(TokenType.LBRACE): return None
         block = ASTNode("While Body", line=token.linea, col=token.columna)
-        for s in self.lista_sentencias():
+        for s in self.lista_declaracion():
             if s is not None:
                 block.add_child(s)
         if not self.match(TokenType.RBRACE): return None
@@ -443,7 +447,7 @@ class Parser:
         if not self.match(TokenType.LBRACE): return None
         
         block = ASTNode("Do Body", line=token.linea, col=token.columna)
-        for s in self.lista_sentencias():
+        for s in self.lista_declaracion():
             if s is not None:
                 block.add_child(s)
                 
