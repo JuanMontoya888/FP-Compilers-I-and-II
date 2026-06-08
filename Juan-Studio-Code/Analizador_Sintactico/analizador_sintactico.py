@@ -62,8 +62,8 @@ class Parser:
     # =====================================================================
     # METHOD: advance
     # What it does: Moves the parsing pointer to the next token.
-    # What components it uses: self.pos, len(self.tokens).
-    # How it interacts: Controls the sequential consumption of tokens.
+    # What components it uses: self.pos.
+    # How it interacts: Steps forward through the token stream.
     # =====================================================================
     def advance(self):
         if self.pos < len(self.tokens):
@@ -112,21 +112,30 @@ class Parser:
     # =====================================================================
     # METHOD: synchronize
     # What it does: Implements panic-mode recovery by discarding tokens until a synchronization point is found.
-    # What components it uses: current_token(), advance(), TokenType.SEMI, TokenType.RBRACE.
-    # How it interacts: Resets panic_mode once a safe token (like ';' or '}') is reached, allowing parsing to resume.
+    # What components it uses: current_token(), advance().
+    # How it interacts: Resets panic_mode once a safe statement boundary token is reached.
     # =====================================================================
     def synchronize(self):
+        sync_keywords = [
+            TokenType.INT, TokenType.FLOAT, TokenType.IF, 
+            TokenType.WHILE, TokenType.DO, TokenType.CIN, TokenType.COUT
+        ]
+        
         while True:
             token = self.current_token()
-            if token.tipo == TokenType.SEMI:
-                self.advance()
+            if token.tipo == TokenType.ENDFILE:
+                break
+                
+            # If the token is already a boundary, we don't consume it here. We break and let the parser handle it.
+            if token.tipo in [TokenType.SEMI, TokenType.RBRACE, TokenType.LBRACE]:
                 self.panic_mode = False
                 break
-            elif token.tipo == TokenType.RBRACE:
+                
+            # Stop explicitly if we see a keyword that starts a new statement
+            if token.tipo in sync_keywords or (token.tipo == TokenType.ID and token.lexema == "bool"):
                 self.panic_mode = False
                 break
-            elif token.tipo == TokenType.ENDFILE:
-                break
+                
             self.advance()
 
     # =====================================================================
@@ -140,15 +149,19 @@ class Parser:
 
     # =====================================================================
     # METHOD: parse
-    # What it does: Entry point for the syntax analysis.
-    # What components it uses: programa().
-    # How it interacts: Starts the recursive descent by calling the top-level grammar rule.
+    # What it does: Entry point of the syntactic analyzer.
+    # What components it uses: current_token(), programa(), emit_node().
+    # How it interacts: Begins the top-down evaluation of the token sequence and returns the root AST Node.
     # =====================================================================
     def parse(self):
-        root_node = self.programa()
-        self.serialize_ast(root_node)
-        return root_node
-
+        self.emit_node("Syntax Analysis Started", "")
+        root = self.programa()
+        if self.current_token().tipo != TokenType.ENDFILE:
+            self.report_error("Unexpected tokens after program end")
+        self.emit_node("Syntax Analysis Completed", "")
+        self.serialize_ast(root)
+        return root
+        
     # =====================================================================
     # METHOD: serialize_ast
     # What it does: Recursively converts the AST into a formatted text string and saves it.
@@ -178,85 +191,97 @@ class Parser:
     # =====================================================================
     # METHOD: programa
     # What it does: Evaluates the grammar rule: programa → main { lista_declaracion }
-    # What components it uses: current_token(), ASTNode, match(), lista_declaracion().
-    # How it interacts: Creates the root node of the AST and orchestrates the block parsing.
+    # What components it uses: match(), lista_declaracion(), ASTNode.
+    # How it interacts: Creates the root node of the AST and connects all child declarations to it.
     # =====================================================================
     def programa(self):
         token = self.current_token()
-        node = ASTNode("Program", value="main", line=token.linea, col=token.columna)
+        node = ASTNode("Program", "main", line=token.linea, col=token.columna)
         self.emit_node("Program", "main")
         
+        # Consuming 'main'
         main_token = self.match(TokenType.MAIN)
-        self.match(TokenType.LBRACE)
+        if not main_token:
+            return None
+            
+        if not self.match(TokenType.LBRACE): return None
         
         decls = self.lista_declaracion()
         for d in decls:
-            node.add_child(d)
+            if d is not None:
+                node.add_child(d)
             
-        self.match(TokenType.RBRACE)
+        if not self.match(TokenType.RBRACE): return None
         return node
 
     # =====================================================================
     # METHOD: lista_declaracion
-    # What it does: Evaluates the grammar rule: lista_declaracion → declaracion lista_declaracion | declaracion
-    # What components it uses: current_token(), declaracion().
-    # How it interacts: Loops to gather multiple declarations and returns them as a flat list for the parent block.
+    # What it does: Evaluates the grammar rule: lista_declaracion → (declaracion_variable | sentencia)*
+    # What components it uses: current_token(), declaracion_variable(), sentencia().
+    # How it interacts: Loops over tokens, routing to variables or statements until a closing brace is found.
     # =====================================================================
     def lista_declaracion(self):
         decls = []
         while True:
             t = self.current_token()
-            first_decl = [TokenType.INT, TokenType.FLOAT, TokenType.IF, TokenType.WHILE, TokenType.DO, TokenType.CIN, TokenType.COUT, TokenType.ID]
-            
-            if t.tipo in first_decl or (t.tipo == TokenType.ID and t.lexema == "bool"):
-                decl_node = self.declaracion()
-                if decl_node:
-                    if isinstance(decl_node, list):
-                        decls.extend(decl_node)
-                    else:
-                        decls.append(decl_node)
-            else:
+            if t.tipo == TokenType.RBRACE or t.tipo == TokenType.ENDFILE:
                 break
+                
+            # Type detection for declarations
+            if t.tipo in [TokenType.INT, TokenType.FLOAT] or (t.tipo == TokenType.ID and t.lexema == "bool"):
+                decl_node = self.declaracion_variable()
+                if decl_node is not None:
+                    decls.append(decl_node)
+            else:
+                s_node = self.sentencia()
+                if s_node is not None:
+                    decls.append(s_node)
+                    
         return decls
 
     # =====================================================================
-    # METHOD: declaracion
-    # What it does: Routes to variable declarations or general statements based on the current token type.
-    # What components it uses: current_token(), declaracion_variable(), lista_sentencias().
-    # How it interacts: Acts as a dispatcher for statement execution and variable instantiation.
-    # =====================================================================
-    def declaracion(self):
-        t = self.current_token()
-        if t.tipo in [TokenType.INT, TokenType.FLOAT] or (t.tipo == TokenType.ID and t.lexema == "bool"):
-            return self.declaracion_variable()
-        else:
-            return self.lista_sentencias()
-
-    # =====================================================================
     # METHOD: declaracion_variable
-    # What it does: Evaluates the grammar rule: declaracion_variable → tipo identificador { , identificador } ;
-    # What components it uses: current_token(), tipo(), match(), ASTNode.
-    # How it interacts: Aggregates multiple comma-separated identifiers under a single declaration parent node.
+    # What it does: Evaluates the grammar rule: declaracion_variable → tipo id [ = expresion ] ( , id [ = expresion ] )* ;
+    # What components it uses: current_token(), tipo(), expresion(), match(), ASTNode.
+    # How it interacts: Creates an AST branch for a sequence of variable declarations with optional assignments.
     # =====================================================================
     def declaracion_variable(self):
         token = self.current_token()
         tipo_str = self.tipo()
-        
+        if tipo_str is None:
+            return None
+            
         node = ASTNode("Variable Declaration", tipo_str, line=token.linea, col=token.columna)
         self.emit_node("Variable Declaration", tipo_str)
         
         while True:
             id_token = self.match(TokenType.ID)
-            if id_token:
-                child = ASTNode("Identifier", id_token.lexema, line=id_token.linea, col=id_token.columna)
-                node.add_child(child)
+            if not id_token:
+                return None
                 
+            child = ASTNode("Identifier", id_token.lexema, line=id_token.linea, col=id_token.columna)
+            
+            # Optional assignment
+            if self.current_token().tipo == TokenType.ASSIGN:
+                self.match(TokenType.ASSIGN)
+                exp_node = self.expresion()
+                
+                init_node = ASTNode("Initialization", "=", line=id_token.linea, col=id_token.columna)
+                init_node.add_child(child)
+                if exp_node is not None:
+                    init_node.add_child(exp_node)
+                node.add_child(init_node)
+            else:
+                node.add_child(child)
+            
             if self.current_token().tipo == TokenType.COMMA:
                 self.match(TokenType.COMMA)
             else:
                 break
                 
-        self.match(TokenType.SEMI)
+        if not self.match(TokenType.SEMI):
+            return None
+            
         return node
 
     # =====================================================================
@@ -270,39 +295,46 @@ class Parser:
         lexema = token.lexema
         if token.tipo in [TokenType.INT, TokenType.FLOAT]:
             self.advance()
+            return lexema
         elif token.tipo == TokenType.ID and token.lexema == "bool":
             self.advance()
+            return lexema
         else:
             self.report_error(f"Expected type (int, float, bool)")
-            lexema = ""
-        return lexema
+            return None
 
     # =====================================================================
     # METHOD: lista_sentencias
-    # What it does: Evaluates the grammar rule: lista_sentencias → sentencia lista_sentencias | ε
+    # What it does: Evaluates the grammar rule: lista_sentencias → sentencia*
     # What components it uses: current_token(), sentencia().
-    # How it interacts: Loops over valid sentence-starting tokens and accumulates their respective sub-trees.
+    # How it interacts: Gathers statement nodes recursively until a block closes.
     # =====================================================================
     def lista_sentencias(self):
         sents = []
-        first_sent = [TokenType.IF, TokenType.WHILE, TokenType.DO, TokenType.CIN, TokenType.COUT, TokenType.ID]
-        
-        while self.current_token().tipo in first_sent:
-            if self.current_token().tipo == TokenType.RBRACE:
+        while True:
+            t = self.current_token()
+            if t.tipo == TokenType.RBRACE or t.tipo == TokenType.ENDFILE:
                 break
+            
             s_node = self.sentencia()
-            if s_node:
+            if s_node is not None:
                 sents.append(s_node)
         return sents
 
     # =====================================================================
     # METHOD: sentencia
-    # What it does: Evaluates the grammar rule: sentencia → seleccion | iteracion | repeticion | sent_in | sent_out | asignacion | operacion_unaria
+    # What it does: Evaluates the grammar rule for routing statements.
     # What components it uses: current_token(), peek_token(), report_error().
-    # How it interacts: Dispatches to specific statement evaluation methods based on the current keyword token.
+    # How it interacts: Dispatches parsing routines based on the keyword or handles empty statements gracefully.
     # =====================================================================
     def sentencia(self):
         token = self.current_token()
+        
+        # Empty Statement Support
+        if token.tipo == TokenType.SEMI:
+            self.advance()
+            return None
+            
         if token.tipo == TokenType.IF:
             return self.seleccion()
         elif token.tipo == TokenType.WHILE:
@@ -321,165 +353,123 @@ class Parser:
                 return self.asignacion()
         else:
             self.report_error("Invalid statement start")
+            # If an invalid start is encountered, synchronize and abort this branch
             return None
 
     # =====================================================================
-    # METHOD: asignacion
-    # What it does: Evaluates the grammar rule: asignacion → id sent_expresion
-    # What components it uses: match(), ASTNode, sent_expresion().
-    # How it interacts: Creates an Assignment node and attaches the evaluated expression as its child.
-    # =====================================================================
-    def asignacion(self):
-        token = self.current_token()
-        id_token = self.match(TokenType.ID)
-        id_lex = id_token.lexema if id_token else "?"
-        
-        node = ASTNode("Assignment", id_lex, line=token.linea, col=token.columna)
-        self.emit_node("Assignment", id_lex)
-        
-        exp_node = self.sent_expresion()
-        if exp_node:
-            node.add_child(exp_node)
-        return node
-
-    # =====================================================================
-    # METHOD: operacion_unaria
-    # What it does: Evaluates the grammar rule: operacion_unaria → id (++ | --) ;
-    # What components it uses: match(), ASTNode, TokenType.INC, TokenType.DEC.
-    # How it interacts: Captures unary increment or decrement operations as standalone statements.
-    # =====================================================================
-    def operacion_unaria(self):
-        token = self.current_token()
-        id_token = self.match(TokenType.ID)
-        id_lex = id_token.lexema if id_token else "?"
-        
-        op_token = self.current_token()
-        if op_token.tipo == TokenType.INC:
-            self.match(TokenType.INC)
-            op_str = "++"
-        elif op_token.tipo == TokenType.DEC:
-            self.match(TokenType.DEC)
-            op_str = "--"
-        else:
-            self.report_error("Expected ++ or --")
-            op_str = "?"
-            
-        self.match(TokenType.SEMI)
-        
-        val = f"{id_lex}{op_str}"
-        node = ASTNode("Unary Operation", val, line=token.linea, col=token.columna)
-        self.emit_node("Unary Operation", val)
-        return node
-
-    # =====================================================================
-    # METHOD: sent_expresion
-    # What it does: Evaluates the grammar rule: sent_expresion → expresion ;
-    # What components it uses: current_token(), match(), expresion().
-    # How it interacts: Consumes the assignment operator (if present) and expects a semicolon after evaluating the expression.
-    # =====================================================================
-    def sent_expresion(self):
-        if self.current_token().tipo == TokenType.ASSIGN:
-            self.match(TokenType.ASSIGN)
-            
-        exp_node = self.expresion()
-        self.match(TokenType.SEMI)
-        return exp_node
-
-    # =====================================================================
     # METHOD: seleccion
-    # What it does: Evaluates the grammar rule: seleccion → if expresion then lista_sentencias [ else lista_sentencias ] end [;]
+    # What it does: Evaluates: seleccion → if ( expresion ) { lista_sentencias } [ else { lista_sentencias } ]
     # What components it uses: match(), expresion(), lista_sentencias(), ASTNode.
-    # How it interacts: Parses conditional blocks, creating distinct 'Then' and optional 'Else' sub-nodes.
+    # How it interacts: Builds an IF structure with mandatory brackets.
     # =====================================================================
     def seleccion(self):
         token = self.current_token()
         node = ASTNode("Selection (if)", line=token.linea, col=token.columna)
         self.emit_node("Selection (if)", "")
         
-        self.match(TokenType.IF)
-        node.add_child(self.expresion())
+        if not self.match(TokenType.IF): return None
+        if not self.match(TokenType.LPAREN): return None
         
-        self.match(TokenType.LBRACE)
+        exp_node = self.expresion()
+        if exp_node is not None:
+            node.add_child(exp_node)
+            
+        if not self.match(TokenType.RPAREN): return None
+        
+        if not self.match(TokenType.LBRACE): return None
         then_block = ASTNode("Then Block", line=token.linea, col=token.columna)
-        
         for s in self.lista_sentencias():
-            then_block.add_child(s)
-        self.match(TokenType.RBRACE)
+            if s is not None:
+                then_block.add_child(s)
+        if not self.match(TokenType.RBRACE): return None
         node.add_child(then_block)
         
         if self.current_token().tipo == TokenType.ELSE:
             el_token = self.match(TokenType.ELSE)
-            self.match(TokenType.LBRACE)
+            if not self.match(TokenType.LBRACE): return None
+            
             else_block = ASTNode("Else Block", line=el_token.linea, col=el_token.columna)
             for s in self.lista_sentencias():
-                else_block.add_child(s)
-            self.match(TokenType.RBRACE)
+                if s is not None:
+                    else_block.add_child(s)
+                    
+            if not self.match(TokenType.RBRACE): return None
             node.add_child(else_block)
             
         return node
 
     # =====================================================================
     # METHOD: iteracion
-    # What it does: Evaluates the grammar rule: iteracion → while ( expresion ) do lista_sentencias end [;]
+    # What it does: Evaluates: iteracion → while ( expresion ) { lista_sentencias }
     # What components it uses: match(), expresion(), lista_sentencias(), ASTNode.
-    # How it interacts: Evaluates a loop construct, assigning the condition expression and the inner block sentences to a 'While' node.
+    # How it interacts: Evaluates standard while loops with mandatory brackets.
     # =====================================================================
     def iteracion(self):
         token = self.current_token()
         node = ASTNode("Iteration (while)", line=token.linea, col=token.columna)
         self.emit_node("Iteration (while)", "")
         
-        self.match(TokenType.WHILE)
-        self.match(TokenType.LPAREN)
-        node.add_child(self.expresion())
-        self.match(TokenType.RPAREN)
+        if not self.match(TokenType.WHILE): return None
+        if not self.match(TokenType.LPAREN): return None
         
-        self.match(TokenType.LBRACE)
+        exp_node = self.expresion()
+        if exp_node is not None:
+            node.add_child(exp_node)
+            
+        if not self.match(TokenType.RPAREN): return None
+        
+        if not self.match(TokenType.LBRACE): return None
         block = ASTNode("While Body", line=token.linea, col=token.columna)
         for s in self.lista_sentencias():
-            block.add_child(s)
-        self.match(TokenType.RBRACE)
+            if s is not None:
+                block.add_child(s)
+        if not self.match(TokenType.RBRACE): return None
         
         node.add_child(block)
         return node
 
     # =====================================================================
     # METHOD: repeticion
-    # What it does: Evaluates the grammar rule: repeticion → do { lista_sentencias } while ( expresion ) ;
+    # What it does: Evaluates: repeticion → do { lista_sentencias } while ( expresion ) ;
     # What components it uses: match(), lista_sentencias(), expresion(), ASTNode.
-    # How it interacts: Parses a do-while block structure delimited by curly braces, grouping its inner statements before evaluating the exit condition.
+    # How it interacts: Validates robust do-while enclosures.
     # =====================================================================
     def repeticion(self):
         token = self.current_token()
         node = ASTNode("Repetition (do-while)", line=token.linea, col=token.columna)
         self.emit_node("Repetition (do-while)", "")
         
-        self.match(TokenType.DO)
-        self.match(TokenType.LBRACE)
+        if not self.match(TokenType.DO): return None
+        if not self.match(TokenType.LBRACE): return None
         
         block = ASTNode("Do Body", line=token.linea, col=token.columna)
         for s in self.lista_sentencias():
-            block.add_child(s)
-            
-        self.match(TokenType.RBRACE)
+            if s is not None:
+                block.add_child(s)
+                
+        if not self.match(TokenType.RBRACE): return None
         node.add_child(block)
         
-        self.match(TokenType.WHILE)
-        self.match(TokenType.LPAREN)
-        node.add_child(self.expresion())
-        self.match(TokenType.RPAREN)
-        self.match(TokenType.SEMI)
+        if not self.match(TokenType.WHILE): return None
+        if not self.match(TokenType.LPAREN): return None
+        
+        exp_node = self.expresion()
+        if exp_node is not None:
+            node.add_child(exp_node)
+            
+        if not self.match(TokenType.RPAREN): return None
+        if not self.match(TokenType.SEMI): return None
         return node
 
     # =====================================================================
     # METHOD: sent_in
-    # What it does: Evaluates the grammar rule: sent_in → cin >> id ;
+    # What it does: Evaluates: sent_in → cin >> id ;
     # What components it uses: match(), ASTNode.
-    # How it interacts: Parses console input commands, ensuring the extraction operator (>>) is used correctly before reading an identifier.
+    # How it interacts: Evaluates input streams explicitly.
     # =====================================================================
     def sent_in(self):
         token = self.current_token()
-        self.match(TokenType.CIN)
+        if not self.match(TokenType.CIN): return None
         
         t = self.current_token()
         if t.tipo == TokenType.GT:
@@ -488,25 +478,29 @@ class Parser:
                 self.advance()
             else:
                 self.report_error("Expected >>")
-        
+                return None
+        else:
+            self.report_error("Expected >>")
+            return None
+            
         id_token = self.match(TokenType.ID)
-        id_val = id_token.lexema if id_token else "?"
+        if not id_token: return None
         
-        node = ASTNode("Input (cin)", id_val, line=token.linea, col=token.columna)
-        self.emit_node("Input (cin)", id_val)
+        node = ASTNode("Input (cin)", id_token.lexema, line=token.linea, col=token.columna)
+        self.emit_node("Input (cin)", id_token.lexema)
         
-        self.match(TokenType.SEMI)
+        if not self.match(TokenType.SEMI): return None
         return node
 
     # =====================================================================
     # METHOD: sent_out
-    # What it does: Evaluates the grammar rule: sent_out → cout << salida
+    # What it does: Evaluates: sent_out → cout << salida ;
     # What components it uses: match(), salida(), ASTNode.
-    # How it interacts: Validates the insertion operator (<<) and connects to the 'salida' method to process the data being printed.
+    # How it interacts: Evaluates standard outputs resolving to the chained output method.
     # =====================================================================
     def sent_out(self):
         token = self.current_token()
-        self.match(TokenType.COUT)
+        if not self.match(TokenType.COUT): return None
         
         t = self.current_token()
         if t.tipo == TokenType.LT:
@@ -515,216 +509,257 @@ class Parser:
                 self.advance()
             else:
                 self.report_error("Expected <<")
-                
+                return None
+        else:
+            self.report_error("Expected <<")
+            return None
+            
         node = ASTNode("Output (cout)", line=token.linea, col=token.columna)
         self.emit_node("Output (cout)", "")
         
-        node.add_child(self.salida())
-        self.match(TokenType.SEMI)
+        out_node = self.salida()
+        if out_node is not None:
+            node.add_child(out_node)
+            
+        if not self.match(TokenType.SEMI): return None
         return node
 
     # =====================================================================
     # METHOD: salida
-    # What it does: Evaluates the grammar rule: salida → cadena | expresion | cadena << expresion | expresion << cadena
-    # What components it uses: current_token(), cadena(), expresion(), ASTNode.
-    # How it interacts: Allows cascading outputs (e.g. cout << "string" << var) by creating a "Salida Múltiple" sub-node when necessary.
+    # What it does: Evaluates: salida → (cadena | expresion) ( << (cadena | expresion) )*
+    # What components it uses: cadena(), expresion(), ASTNode.
+    # How it interacts: Evaluates cascaded outputs looping dynamically.
     # =====================================================================
     def salida(self):
         token = self.current_token()
         
+        # Evaluar el primer elemento de la impresión
         if token.tipo == TokenType.STRING:
             node = self.cadena()
         else:
-            node = self.expresion()
+            node = self.expr_simple()
             
+        if node is None:
+            return None
+            
+        # Procesar los elementos encadenados mediante operadores '<<'
         while self.current_token().tipo == TokenType.LT:
-            lt_t = self.current_token()
-            self.advance()
-            if self.current_token().tipo == TokenType.LT:
-                self.advance()
+            # Lookahead: Verificar que realmente sea un operador '<<' doble
+            if self.peek_token().tipo == TokenType.LT:
+                lt_t = self.current_token()
+                self.advance() # Consume el primer '<'
+                self.advance() # Consume el segundo '<'
+                
                 new_node = ASTNode("Multiple Output", line=lt_t.linea, col=lt_t.columna)
                 new_node.add_child(node)
                 
-                t2 = self.current_token()
-                if t2.tipo == TokenType.STRING:
-                    new_node.add_child(self.cadena())
+                # Evaluar el siguiente elemento en la cascada
+                next_token = self.current_token()
+                if next_token.tipo == TokenType.STRING:
+                    c_node = self.cadena()
+                    if c_node is not None:
+                        new_node.add_child(c_node)
                 else:
-                    new_node.add_child(self.expresion())
+                    e_node = self.expr_simple()
+                    if e_node is not None:
+                        new_node.add_child(e_node)
+                        
                 node = new_node
             else:
-                self.report_error("Expected <<")
+                # Si solo hay un '<' suelto, no pertenece a la salida
                 break
                 
         return node
 
     # =====================================================================
+    # METHOD: asignacion
+    # What it does: Evaluates: asignacion → id = expresion ;
+    # What components it uses: match(), expresion(), ASTNode.
+    # How it interacts: Extracts target variables and binds their evaluated result expressions.
+    # =====================================================================
+    def asignacion(self):
+        token = self.current_token()
+        id_token = self.match(TokenType.ID)
+        if not id_token: return None
+        
+        node = ASTNode("Assignment", id_token.lexema, line=token.linea, col=token.columna)
+        self.emit_node("Assignment", id_token.lexema)
+        
+        if not self.match(TokenType.ASSIGN): return None
+        
+        exp_node = self.expresion()
+        if exp_node is not None:
+            node.add_child(exp_node)
+            
+        if not self.match(TokenType.SEMI): return None
+        return node
+
+    # =====================================================================
+    # METHOD: operacion_unaria
+    # What it does: Evaluates: operacion_unaria → id (++ | --) ;
+    # What components it uses: match(), advance(), ASTNode.
+    # How it interacts: Maps directly increment or decrement commands to the designated AST branches.
+    # =====================================================================
+    def operacion_unaria(self):
+        token = self.current_token()
+        id_token = self.match(TokenType.ID)
+        if not id_token: return None
+        
+        op_token = self.current_token()
+        if op_token.tipo == TokenType.INC:
+            self.advance()
+            op_str = "++"
+        elif op_token.tipo == TokenType.DEC:
+            self.advance()
+            op_str = "--"
+        else:
+            self.report_error("Expected ++ or --")
+            return None
+            
+        if not self.match(TokenType.SEMI): return None
+        
+        val = f"{id_token.lexema}{op_str}"
+        node = ASTNode("Unary Operation", val, line=token.linea, col=token.columna)
+        self.emit_node("Unary Operation", val)
+        return node
+
+    # =====================================================================
     # METHOD: expresion
-    # What it does: Evaluates the grammar rule: expresion → expresion_relacional { (&& | ||) expresion_relacional }
-    # What components it uses: expresion_relacional(), current_token(), ASTNode.
-    # How it interacts: Establishes top-level logical precedence (AND, OR), dynamically wrapping relational expressions into Logical Operation nodes.
+    # What it does: Evaluates: expresion → expr_relacional ( (&& | ||) expr_relacional )*
+    # What components it uses: expr_relacional(), advance(), ASTNode.
+    # How it interacts: Top-level precedence wrapper resolving boolean chaining.
     # =====================================================================
     def expresion(self):
-        node = self.expresion_relacional()
+        node = self.expr_relacional()
+        if node is None: return None
         
         while self.current_token().tipo in [TokenType.AND, TokenType.OR]:
             token = self.current_token()
             op_str = token.lexema
             self.advance()
-            right_node = self.expresion_relacional()
+            
+            right_node = self.expr_relacional()
             
             new_node = ASTNode("Logical Operation", op_str, line=token.linea, col=token.columna)
             self.emit_node("Logical Operation", op_str)
-            if node:
-                new_node.add_child(node)
-            if right_node:
+            new_node.add_child(node)
+            if right_node is not None:
                 new_node.add_child(right_node)
             node = new_node
             
         return node
 
     # =====================================================================
-    # METHOD: expresion_relacional
-    # What it does: Evaluates the grammar rule: expresion_relacional → expresion_simple [ rel_op expresion_simple ]
-    # What components it uses: expresion_simple(), rel_op(), ASTNode.
-    # How it interacts: Evaluates comparison operations (<, <=, >, >=, ==, !=), grouping arithmetic sub-trees on both sides.
+    # METHOD: expr_relacional
+    # What it does: Evaluates: expr_relacional → expr_simple [ (< | <= | > | >= | == | !=) expr_simple ]
+    # What components it uses: expr_simple(), advance(), ASTNode.
+    # How it interacts: Secondary precedence resolving comparisons across unified operations.
     # =====================================================================
-    def expresion_relacional(self):
-        left_node = self.expresion_simple()
+    def expr_relacional(self):
+        left_node = self.expr_simple()
+        if left_node is None: return None
         
         rel_ops = [TokenType.LT, TokenType.LTEQ, TokenType.GT, TokenType.GTEQ, TokenType.EQ, TokenType.NEQ]
         token = self.current_token()
+        
         if token.tipo in rel_ops:
-            op_str = self.rel_op()
-            right_node = self.expresion_simple()
+            op_str = token.lexema
+            self.advance()
+            right_node = self.expr_simple()
             
             node = ASTNode("Relational Expression", op_str, line=token.linea, col=token.columna)
             self.emit_node("Relational Expression", op_str)
-            if left_node:
-                node.add_child(left_node)
-            if right_node:
+            node.add_child(left_node)
+            if right_node is not None:
                 node.add_child(right_node)
             return node
             
         return left_node
 
     # =====================================================================
-    # METHOD: rel_op
-    # What it does: Evaluates the grammar rule: rel_op → < | <= | > | >= | == | !=
-    # What components it uses: current_token(), advance().
-    # How it interacts: Extracts the string representation of relational operators for AST assignments.
+    # METHOD: expr_simple
+    # What it does: Evaluates: expr_simple → termino ( (+ | -) termino )*
+    # What components it uses: termino(), advance(), ASTNode.
+    # How it interacts: Precedence for addition and subtraction.
     # =====================================================================
-    def rel_op(self):
-        token = self.current_token()
-        self.advance()
-        return token.lexema
-
-    # =====================================================================
-    # METHOD: expresion_simple
-    # What it does: Evaluates the grammar rule: expresion_simple → termino { suma_op termino }
-    # What components it uses: termino(), suma_op(), ASTNode.
-    # How it interacts: Handles standard arithmetic addition and subtraction logic.
-    # =====================================================================
-    def expresion_simple(self):
+    def expr_simple(self):
         node = self.termino()
+        if node is None: return None
         
         while self.current_token().tipo in [TokenType.PLUS, TokenType.MINUS]:
             token = self.current_token()
-            op_str = self.suma_op()
+            op_str = token.lexema
+            self.advance()
+            
             right_node = self.termino()
             
-            new_node = ASTNode("Add/Subtract Operation", op_str, line=token.linea, col=token.columna)
-            if node:
-                new_node.add_child(node)
-            if right_node:
+            new_node = ASTNode("Arithmetic Expression", op_str, line=token.linea, col=token.columna)
+            self.emit_node("Arithmetic Expression", op_str)
+            new_node.add_child(node)
+            if right_node is not None:
                 new_node.add_child(right_node)
             node = new_node
             
         return node
-
-    # =====================================================================
-    # METHOD: suma_op
-    # What it does: Evaluates the grammar rule: suma_op → + | -
-    # What components it uses: current_token(), advance().
-    # How it interacts: Extracts the addition/subtraction string literal.
-    # =====================================================================
-    def suma_op(self):
-        token = self.current_token()
-        self.advance()
-        return token.lexema
 
     # =====================================================================
     # METHOD: termino
-    # What it does: Evaluates the grammar rule: termino → factor { mult_op factor }
-    # What components it uses: factor(), mult_op(), ASTNode.
-    # How it interacts: Evaluates multiplication, division, and modulo, applying higher precedence over addition logic.
+    # What it does: Evaluates: termino → factor ( (* | / | %) factor )*
+    # What components it uses: factor(), advance(), ASTNode.
+    # How it interacts: Evaluates multiplicatives bindings prioritizing them over standard arithmetic bounds.
     # =====================================================================
     def termino(self):
         node = self.factor()
+        if node is None: return None
         
+        # CORRECTED: Changed TokenType.DIVIDE back to TokenType.OVER to match your Lexer configuration
         while self.current_token().tipo in [TokenType.TIMES, TokenType.OVER, TokenType.MOD]:
             token = self.current_token()
-            op_str = self.mult_op()
+            op_str = token.lexema
+            self.advance()
+            
             right_node = self.factor()
             
-            new_node = ASTNode("Multiply/Divide Operation", op_str, line=token.linea, col=token.columna)
-            if node:
-                new_node.add_child(node)
-            if right_node:
+            new_node = ASTNode("Arithmetic Expression", op_str, line=token.linea, col=token.columna)
+            self.emit_node("Arithmetic Expression", op_str)
+            new_node.add_child(node)
+            if right_node is not None:
                 new_node.add_child(right_node)
             node = new_node
             
         return node
-
-    # =====================================================================
-    # METHOD: mult_op
-    # What it does: Evaluates the grammar rule: mult_op → * | / | %
-    # What components it uses: current_token(), advance().
-    # How it interacts: Extracts multiplicative operator strings.
-    # =====================================================================
-    def mult_op(self):
-        token = self.current_token()
-        self.advance()
-        return token.lexema
 
     # =====================================================================
     # METHOD: factor
-    # What it does: Evaluates the grammar rule: factor → componente { pot_op componente }
-    # What components it uses: componente(), pot_op(), ASTNode.
-    # How it interacts: Solves exponential expressions with the highest mathematical precedence.
+    # What it does: Evaluates: factor → componente ( ^ componente )*
+    # What components it uses: componente(), advance(), ASTNode.
+    # How it interacts: Evaluates exponential expressions, the highest mathematical priority rule.
     # =====================================================================
     def factor(self):
         node = self.componente()
+        if node is None: return None
         
         while self.current_token().tipo == TokenType.POWER:
             token = self.current_token()
-            op_str = self.pot_op()
+            op_str = token.lexema
+            self.advance()
+            
             right_node = self.componente()
             
-            new_node = ASTNode("Power Operation", op_str, line=token.linea, col=token.columna)
-            if node:
-                new_node.add_child(node)
-            if right_node:
+            new_node = ASTNode("Arithmetic Expression", op_str, line=token.linea, col=token.columna)
+            self.emit_node("Arithmetic Expression", op_str)
+            new_node.add_child(node)
+            if right_node is not None:
                 new_node.add_child(right_node)
             node = new_node
             
         return node
 
     # =====================================================================
-    # METHOD: pot_op
-    # What it does: Evaluates the grammar rule: pot_op → ^
-    # What components it uses: current_token(), advance().
-    # How it interacts: Extracts the power operator string literal.
-    # =====================================================================
-    def pot_op(self):
-        token = self.current_token()
-        self.advance()
-        return token.lexema
-
-    # =====================================================================
     # METHOD: componente
-    # What it does: Evaluates the grammar rule: componente → ( expresion ) | número | id | bool | op_logico
-    # What components it uses: current_token(), expresion(), op_logico(), ASTNode.
-    # How it interacts: Extracts terminal leaf nodes (numbers, identifiers, strings) or resets precedence by parsing parenthesized sub-expressions.
+    # What it does: Evaluates: componente → ! componente | ( expresion ) | NUM_INT | NUM_FLOAT | ID | STRING | true | false
+    # What components it uses: expresion(), advance(), match(), ASTNode.
+    # How it interacts: Validates leaf tokens correctly resetting precedence paths if a grouped parenthesis invokes expression mapping again.
     # =====================================================================
     def componente(self):
         token = self.current_token()
@@ -734,14 +769,14 @@ class Parser:
             inner = self.componente()
             node = ASTNode("Logical NOT", "!", line=token.linea, col=token.columna)
             self.emit_node("Logical NOT", "!")
-            if inner:
+            if inner is not None:
                 node.add_child(inner)
             return node
             
         elif token.tipo == TokenType.LPAREN:
             self.advance()
             exp_node = self.expresion()
-            self.match(TokenType.RPAREN)
+            if not self.match(TokenType.RPAREN): return None
             return exp_node
             
         elif token.tipo in [TokenType.NUM_INT, TokenType.NUM_FLOAT]:
@@ -761,30 +796,18 @@ class Parser:
             return node
             
         elif token.tipo == TokenType.STRING:
-            return self.cadena()
+            node = ASTNode("String Literal", token.lexema, line=token.linea, col=token.columna)
+            self.emit_node("String Literal", token.lexema)
+            self.advance()
+            return node
             
         else:
-            self.report_error(f"Invalid expression component")
+            self.report_error("Invalid expression component")
             return None
 
     # =====================================================================
-    # METHOD: op_logico
-    # What it does: Evaluates the grammar rule: op_logico → && | || | !
-    # What components it uses: current_token(), advance(), ASTNode.
-    # How it interacts: Validates explicit logical operators found outside standard binary precedence bounds.
-    # =====================================================================
-    def op_logico(self):
-        token = self.current_token()
-        node = ASTNode("Logical Operator", token.lexema, line=token.linea, col=token.columna)
-        self.emit_node("Logical Operator", token.lexema)
-        self.advance()
-        return node
-
-    # =====================================================================
     # METHOD: cadena
-    # What it does: Evaluates the grammar rule: cadena → "cualquier texto"
-    # What components it uses: current_token(), advance(), ASTNode.
-    # How it interacts: Handles string literals natively as terminal nodes.
+    # What it does: Dedicated string handling function. Currently absorbed effectively into componente, but held for legacy structure mapping.
     # =====================================================================
     def cadena(self):
         token = self.current_token()

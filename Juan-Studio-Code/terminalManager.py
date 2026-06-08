@@ -183,6 +183,45 @@ class TerminalManager(QTabWidget):
         # Only show AST Visualization button when Syntax Analysis is the active tab
         is_syntax_tab = (self.widget(index) == self.sintactico_output)
         self.btn_visualize_ast.setVisible(is_syntax_tab)
+        
+        if self.widget(index) == self.errores:
+            self.stop_error_blink()
+
+    def get_current_editor(self):
+        if not self.main_app: return None
+        current_index = self.main_app.editor_manager.tabs.currentIndex()
+        if current_index >= 0:
+            current_page = self.main_app.editor_manager.tabs.widget(current_index)
+            if hasattr(current_page, 'editor'):
+                return current_page.editor
+        return None
+
+    def alert_errors_tab(self):
+        index = self.indexOf(self.errores)
+        if self.currentIndex() == index:
+            return
+            
+        if not hasattr(self, 'blink_timer'):
+            from PySide6.QtCore import QTimer
+            self.blink_timer = QTimer(self)
+            self.blink_timer.timeout.connect(self._toggle_error_tab_color)
+            
+        self.blink_state = False
+        self.blink_timer.start(500)
+
+    def _toggle_error_tab_color(self):
+        index = self.indexOf(self.errores)
+        from PySide6.QtGui import QColor
+        self.blink_state = not getattr(self, 'blink_state', False)
+        color = QColor("#ff5555") if self.blink_state else QColor()
+        self.tabBar().setTabTextColor(index, color)
+
+    def stop_error_blink(self):
+        if hasattr(self, 'blink_timer') and self.blink_timer.isActive():
+            self.blink_timer.stop()
+            index = self.indexOf(self.errores)
+            from PySide6.QtGui import QColor
+            self.tabBar().setTabTextColor(index, QColor())
 
     def copy_current_tab(self):
         """Copia el contenido de la pestaña actual al portapapeles."""
@@ -408,6 +447,10 @@ class TerminalManager(QTabWidget):
             self.setCurrentIndex(1)
             self.show()
             self.lexico_output.clear()
+            
+            editor = self.get_current_editor()
+            if editor:
+                editor.clear_error_highlights()
 
             if not source_code:
                 item = QTreeWidgetItem(self.lexico_output)
@@ -447,6 +490,8 @@ class TerminalManager(QTabWidget):
         if len(errors) > 0:
             from PySide6.QtGui import QColor
             error_color = QColor("#ff5555")
+            editor = self.get_current_editor()
+            
             for t in errors:
                 line = t[2] if len(t) > 2 else "?"
                 col = t[3] if len(t) > 3 else "?"
@@ -455,6 +500,11 @@ class TerminalManager(QTabWidget):
                 item.setText(1, f"Ln {line}, Col {col}")
                 item.setForeground(0, error_color)
                 item.setForeground(1, error_color)
+                
+                if editor and str(line).isdigit() and str(col).isdigit():
+                    editor.add_error_highlight(int(line) - 1, int(col) - 1)
+            
+            self.alert_errors_tab()
         
         # Poblar pestaña de Léxico SÓLO con tokens válidos
         for t in valid_tokens:
@@ -471,6 +521,10 @@ class TerminalManager(QTabWidget):
         self.setCurrentIndex(2)
         self.show()
         self.sintactico_output.clear()
+        
+        editor = self.get_current_editor()
+        if editor:
+            editor.clear_error_highlights()
 
         if not source_code:
             return
@@ -505,6 +559,11 @@ class TerminalManager(QTabWidget):
             error_color = QColor("#ff5555")
             item.setForeground(0, error_color)
             item.setForeground(1, error_color)
+            
+            editor = self.get_current_editor()
+            if editor and str(linea).isdigit() and str(columna).isdigit():
+                editor.add_error_highlight(int(linea) - 1, int(columna) - 1)
+            self.alert_errors_tab()
             
         def handle_node(nombre, lexema):
             # La señal node_signal emite cada nodo conforme se crea.
@@ -555,6 +614,10 @@ class TerminalManager(QTabWidget):
         self.setCurrentIndex(3)
         self.show()
         self.semantico_output.clear()
+        
+        editor = self.get_current_editor()
+        if editor:
+            editor.clear_error_highlights()
 
         # Simulated type and scope validation
         resultado_simulado = f"=== SEMANTIC RESULT ===\nValidation for:\n{source_code}"
@@ -565,6 +628,10 @@ class TerminalManager(QTabWidget):
         self.setCurrentIndex(4)
         self.show()
         self.codigo_intermedio.clear()
+        
+        editor = self.get_current_editor()
+        if editor:
+            editor.clear_error_highlights()
 
         # Simulated 3-address code or quadruples generation
         resultado_simulado = f"=== INTERMEDIATE CODE ===\nQuadruples generated for:\n{source_code}"

@@ -3,7 +3,7 @@ import os
 from PySide6.QtWidgets import QPlainTextEdit, QVBoxLayout, QHBoxLayout, QWidget, QTextEdit, QLabel, QMessageBox, QFileDialog
 from PySide6.QtCore import Qt, QRect, QSize
 from PySide6.QtGui import QPainter, QColor, QTextFormat
-from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QFont
+from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QFont, QTextCursor
 from PySide6.QtCore import QRegularExpression
 
 # ============================================================
@@ -230,6 +230,7 @@ class CodeEditor(QPlainTextEdit):
         self.cursorPositionChanged.connect(self.highlight_current_line)
 
         self.update_line_number_area_width(0)
+        self.error_selections = []
         self.highlight_current_line()
         self.tree_manager = None
 
@@ -297,7 +298,41 @@ class CodeEditor(QPlainTextEdit):
             selection.cursor = self.textCursor()
             selection.cursor.clearSelection()
             extra_selections.append(selection)
+            
+        extra_selections.extend(self.error_selections)
         self.setExtraSelections(extra_selections)
+
+    # ============================================================
+    # METHOD: add_error_highlight
+    # What it does: Adds a red squiggly line under the specified word.
+    # ============================================================
+    def add_error_highlight(self, line, col):
+        selection = QTextEdit.ExtraSelection()
+        format = QTextCharFormat()
+        format.setUnderlineStyle(QTextCharFormat.SpellCheckUnderline)
+        format.setUnderlineColor(QColor("red"))
+        selection.format = format
+        
+        cursor = self.textCursor()
+        cursor.movePosition(QTextCursor.Start)
+        cursor.movePosition(QTextCursor.Down, QTextCursor.MoveAnchor, line)
+        cursor.movePosition(QTextCursor.Right, QTextCursor.MoveAnchor, col)
+        cursor.movePosition(QTextCursor.EndOfWord, QTextCursor.KeepAnchor)
+        
+        if cursor.selectedText() == "":
+            cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 1)
+            
+        selection.cursor = cursor
+        self.error_selections.append(selection)
+        self.highlight_current_line()
+
+    # ============================================================
+    # METHOD: clear_error_highlights
+    # What it does: Clears all red squiggly underlines.
+    # ============================================================
+    def clear_error_highlights(self):
+        self.error_selections.clear()
+        self.highlight_current_line()
 
     # ============================================================
     # METHOD: lineNumberAreaPaintEvent

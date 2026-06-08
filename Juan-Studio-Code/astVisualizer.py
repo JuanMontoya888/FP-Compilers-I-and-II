@@ -136,7 +136,7 @@ class ASTHtmlGenerator:
         # Row 3: Horizontal connecting branch bridging all children
         if n == 1:
             # Single child implies a straight vertical line without horizontal spreading
-            res += f"""
+            res += """
             <tr>
                 <td colspan="2" align="center">
                     <table border="0" cellspacing="0" cellpadding="0">
