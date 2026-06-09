@@ -59,6 +59,13 @@ class Shortcuts:
         QShortcut(QKeySequence("Ctrl+Tab"), self.parent).activated.connect(self.change_tab)
 
         # ==========================================
+        # EDITOR SHORTCUTS
+        # Logic related to text search and replace.
+        # ==========================================
+        QShortcut(QKeySequence("Ctrl+F"), self.parent).activated.connect(self.find_in_editor)
+        QShortcut(QKeySequence("Ctrl+Shift+F"), self.parent).activated.connect(self.replace_in_editor)
+
+        # ==========================================
         # EXECUTION AND VISIBILITY
         # Hotkeys for workspace layout and code processing.
         # ==========================================
@@ -109,6 +116,32 @@ class Shortcuts:
         current_index = self.editor.tabs.currentIndex()
         if current_index >= 0:
             self.editor.close_page(current_index)
+
+
+    # =====================================================================
+    # METHOD: find_in_editor
+    # What it does: Triggers the find dialog on the active code editor.
+    # =====================================================================
+    def find_in_editor(self):
+        """Opens the Find dialog for the current tab."""
+        current_index = self.editor.tabs.currentIndex()
+        if current_index >= 0:
+            current_page = self.editor.tabs.widget(current_index)
+            if hasattr(current_page, 'editor'):
+                current_page.editor.show_find_dialog()
+
+
+    # =====================================================================
+    # METHOD: replace_in_editor
+    # What it does: Triggers the replace dialog on the active code editor.
+    # =====================================================================
+    def replace_in_editor(self):
+        """Opens the Replace dialog for the current tab."""
+        current_index = self.editor.tabs.currentIndex()
+        if current_index >= 0:
+            current_page = self.editor.tabs.widget(current_index)
+            if hasattr(current_page, 'editor'):
+                current_page.editor.show_replace_dialog()
 
 
     # =====================================================================

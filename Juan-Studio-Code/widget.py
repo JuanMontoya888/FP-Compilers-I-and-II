@@ -11,6 +11,7 @@ from treeManager import TreeManager
 from codeEditorManager import CodeEditorManager
 from shortcuts import Shortcuts
 from terminalManager import TerminalManager
+from components.context_menu import ExplorerContextMenuManager
 
 # =====================================================================
 # MAIN ARCHITECTURE: Widget Class (IDE Orchestrator)
@@ -140,6 +141,13 @@ class Widget(QWidget):
 
         # Final cross-reference injection
         self.editor_manager.tree_manager = self.explorer
+
+        # Initialize the custom context menu for the file explorer
+        self.context_menu_manager = ExplorerContextMenuManager(
+            self.ui.treeView, 
+            self.explorer.model, 
+            self.explorer
+        )
 
 
     # ============================================================

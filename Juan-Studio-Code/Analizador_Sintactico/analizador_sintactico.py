@@ -230,7 +230,9 @@ class Parser:
             t = self.current_token()
             if t.tipo == TokenType.RBRACE or t.tipo == TokenType.ENDFILE:
                 break
-                
+            
+            pos_initial = self.pos
+            
             # Type detection for declarations
             if t.tipo in [TokenType.INT, TokenType.FLOAT] or (t.tipo == TokenType.ID and t.lexema == "bool"):
                 decl_node = self.declaracion_variable()
@@ -240,7 +242,9 @@ class Parser:
                 s_node = self.sentencia()
                 if s_node is not None:
                     decls.append(s_node)
-                    
+                   
+            if self.pos == pos_initial:
+                self.advance() 
         return decls
 
     # =====================================================================

@@ -1,9 +1,9 @@
 # This Python file uses the following encoding: utf-8
 import os
-from PySide6.QtWidgets import QPlainTextEdit, QVBoxLayout, QHBoxLayout, QWidget, QTextEdit, QLabel, QMessageBox, QFileDialog
+from PySide6.QtWidgets import QPlainTextEdit, QVBoxLayout, QHBoxLayout, QWidget, QTextEdit, QLabel, QMessageBox, QFileDialog, QMenu, QInputDialog
 from PySide6.QtCore import Qt, QRect, QSize
 from PySide6.QtGui import QPainter, QColor, QTextFormat
-from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QFont, QTextCursor
+from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QFont, QTextCursor, QTextDocument
 from PySide6.QtCore import QRegularExpression
 
 # ============================================================
@@ -338,8 +338,8 @@ class CodeEditor(QPlainTextEdit):
     # METHOD: lineNumberAreaPaintEvent
     # What it does: The core drawing loop for the line numbers.
     # Components: QPainter, QTextBlock.
-    # Interaction: Iterates only through visible blocks for performance
-    # optimization in large files.
+    # Interaction: Uses Qt's block iteration system to dynamically
+    # map only visible lines to painted numbers on the gutter.
     # ============================================================
     def lineNumberAreaPaintEvent(self, event):
         painter = QPainter(self.line_number_area)
@@ -354,14 +354,111 @@ class CodeEditor(QPlainTextEdit):
             if block.isVisible() and bottom >= event.rect().top():
                 number = str(block_number + 1)
                 painter.setPen(QColor("#858585"))
-                painter.drawText(0, top, self.line_number_area.width() - 5,
-                                 self.fontMetrics().height(),
-                                 Qt.AlignRight | Qt.AlignVCenter, number)
-
+                painter.drawText(
+                    0, top, self.line_number_area.width() - 5,
+                    self.fontMetrics().height(),
+                    Qt.AlignRight, number
+                )
             block = block.next()
             top = bottom
             bottom = top + round(self.blockBoundingRect(block).height())
             block_number += 1
+
+    # ============================================================
+    # METHOD: contextMenuEvent
+    # What it does: Overrides the standard right-click context menu.
+    # ============================================================
+    def contextMenuEvent(self, event):
+        menu = self.createStandardContextMenu()
+        menu.addSeparator()
+
+        action_format = menu.addAction("Format Document")
+        action_format.triggered.connect(self.format_document)
+
+        action_find = menu.addAction("Find...")
+        action_find.triggered.connect(self.show_find_dialog)
+
+        action_replace = menu.addAction("Replace...")
+        action_replace.triggered.connect(self.show_replace_dialog)
+
+        menu.exec_(event.globalPos())
+
+    # ============================================================
+    # METHOD: format_document
+    # What it does: Basic auto-indentation using braces nesting.
+    # ============================================================
+    def format_document(self):
+        cursor = self.textCursor()
+        cursor.beginEditBlock()
+        
+        text = self.toPlainText()
+        lines = text.split('\n')
+        
+        formatted_lines = []
+        indent_level = 0
+        tab_size = 4
+        
+        for line in lines:
+            stripped = line.strip()
+            
+            # Decrease indent before processing if line starts with closing brace
+            if stripped.startswith('}'):
+                indent_level = max(0, indent_level - 1)
+                
+            formatted_lines.append((' ' * (indent_level * tab_size)) + stripped)
+            
+            # Increase indent after processing if line ends with opening brace
+            if stripped.endswith('{'):
+                indent_level += 1
+                
+        self.setPlainText('\n'.join(formatted_lines))
+        
+        cursor.endEditBlock()
+        self.setTextCursor(cursor)
+
+    # ============================================================
+    # METHOD: show_find_dialog
+    # What it does: Basic find operation traversing the document.
+    # ============================================================
+    def show_find_dialog(self):
+        search_text, ok = QInputDialog.getText(
+            self, "Find", "Enter text to find:"
+        )
+        if ok and search_text:
+            cursor = self.document().find(search_text, self.textCursor())
+            if not cursor.isNull():
+                self.setTextCursor(cursor)
+            else:
+                # If not found downwards, try searching from the start
+                cursor = self.document().find(search_text, 0)
+                if not cursor.isNull():
+                    self.setTextCursor(cursor)
+                else:
+                    QMessageBox.information(self, "Find", f"Cannot find '{search_text}'.")
+
+    # ============================================================
+    # METHOD: show_replace_dialog
+    # What it does: Basic replace operation.
+    # ============================================================
+    def show_replace_dialog(self):
+        search_text, ok_find = QInputDialog.getText(
+            self, "Replace", "Enter text to find:"
+        )
+        if not (ok_find and search_text):
+            return
+            
+        replace_text, ok_replace = QInputDialog.getText(
+            self, "Replace", f"Replace '{search_text}' with:"
+        )
+        if not ok_replace:
+            return
+            
+        cursor = self.document().find(search_text, self.textCursor())
+        if not cursor.isNull():
+            cursor.insertText(replace_text)
+            self.setTextCursor(cursor)
+        else:
+            QMessageBox.information(self, "Replace", f"Cannot find '{search_text}'.")
 
 
 # =====================================================================
