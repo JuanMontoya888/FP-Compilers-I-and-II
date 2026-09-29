@@ -1,8 +1,8 @@
 # This Python file uses the following encoding: utf-8
 import os
-from PySide6.QtWidgets import QFileSystemModel, QFileDialog, QMenu
-from PySide6.QtGui import QAction
-from PySide6.QtCore import QModelIndex
+from PySide6.QtWidgets import QFileSystemModel, QFileDialog, QMenu, QFileIconProvider
+from PySide6.QtGui import QAction, QIcon
+from PySide6.QtCore import QModelIndex, QFileInfo, QObject, Signal
 
 # =====================================================================
 # CLASS: TreeManager (NAVIGATION AND MENU SYSTEM)
@@ -13,29 +13,37 @@ from PySide6.QtCore import QModelIndex
 # - Model-View: Implements QFileSystemModel to mirror the physical storage.
 # - Menu Factory: Imperatively constructs the context-aware top menus.
 # - Controller/Proxy: Bridges the file explorer, code editor, and terminal.
-from PySide6.QtWidgets import QFileIconProvider
-from PySide6.QtGui import QIcon
-from PySide6.QtCore import QFileInfo
 
 class CustomIconProvider(QFileIconProvider):
     def icon(self, arg):
+        base_dir = os.path.dirname(os.path.abspath(__file__))
         if isinstance(arg, QFileInfo):
             if arg.isDir():
-                return QIcon(os.path.join("icons", "new_folder.svg"))
+                return QIcon(os.path.join(base_dir, "icons", "new_folder.svg"))
             else:
-                return QIcon(os.path.join("icons", "open_file.svg"))
+                return QIcon(os.path.join(base_dir, "icons", "open_file.svg"))
         if arg == QFileIconProvider.Folder:
-            return QIcon(os.path.join("icons", "new_folder.svg"))
+            return QIcon(os.path.join(base_dir, "icons", "new_folder.svg"))
         elif arg == QFileIconProvider.File:
-            return QIcon(os.path.join("icons", "open_file.svg"))
+            return QIcon(os.path.join(base_dir, "icons", "open_file.svg"))
         return super().icon(arg)
 
-class TreeManager:
+class TreeManager(QObject):
+    file_opened = Signal(str, str, str) # file_name, content, file_path
+    new_file_requested = Signal()
+    save_file_requested = Signal()
+    save_as_file_requested = Signal()
+    close_tab_requested = Signal()
+    copy_requested = Signal()
+    paste_requested = Signal()
+    terminal_toggle_requested = Signal()
+    terminal_clear_requested = Signal()
+    terminal_kill_requested = Signal()
+    compile_action_requested = Signal(int) # index
 
-    def __init__(self, tree_view, ui, editor_manager, terminal_manager, main_app):
+    def __init__(self, tree_view, ui, main_app):
+        super().__init__()
         self.tree = tree_view
-        self.editor_manager = editor_manager
-        self.terminal_manager = terminal_manager
         self.main_app = main_app
 
         # System file model configuration
@@ -66,7 +74,7 @@ class TreeManager:
     # METHOD: on_file_selected
     # What it does: Triggers the "Open File" logic when a user interacts
     # with the tree view.
-    # What components it uses: QModelIndex, Python File I/O, editor_manager.
+    # What components it uses: QModelIndex, Python File I/O.
     # How it interacts: Converts the tree index into a physical path,
     # reads the content, and instructs the editor_manager to create a new tab.
     # ============================================================
@@ -81,7 +89,7 @@ class TreeManager:
                 with open(file_path, 'r', encoding='latin-1') as f:
                     content = f.read()
                     file_name = self.model.fileName(index)
-                    self.editor_manager.add_new_page(file_name, content, file_path)
+                    self.file_opened.emit(file_name, content, file_path)
             except Exception as e:
                 print(f"CRITICAL: Could not read the file: {e}")
 
@@ -188,37 +196,19 @@ class TreeManager:
 
     def toggle_terminal_action(self):
         """Switches terminal visibility state."""
-        if self.terminal_manager.isVisible():
-            self.terminal_manager.hide()
-        else:
-            self.terminal_manager.show()
+        self.terminal_toggle_requested.emit()
 
     def clear_terminal_action(self):
         """Purges the terminal text buffer."""
-        self.terminal_manager.terminal_edit.clear()
-        self.terminal_manager.interactive_position = 0
+        self.terminal_clear_requested.emit()
 
     def kill_process_action(self):
         """Forces the termination of the active shell process."""
-        if self.terminal_manager.process.state() != self.terminal_manager.process.NotRunning:
-            self.terminal_manager.process.kill()
-            self.terminal_manager.terminal_edit.appendPlainText("\n[PROCESS TERMINATED BY USER]\n")
-            self.terminal_manager.interactive_position = self.terminal_manager.terminal_edit.textCursor().position()
+        self.terminal_kill_requested.emit()
 
     def open_terminal_tab(self, index, execute_analysis=False):
         """Switches focus to a specific console phase (Lexical, Syntax, etc)."""
-        if execute_analysis:
-            match(index):
-
-
-                case 1:
-                    self.terminal_manager.execute_lexical(self.main_app.current_file_selected)
-
-
-        self.terminal_manager.setCurrentIndex(index)
-        if not self.terminal_manager.isVisible():
-            self.terminal_manager.show()
-
+        self.compile_action_requested.emit(index)
 
     # =====================================================================
     # SECTION: EDITING AND PERSISTENCE LOGIC
@@ -228,31 +218,23 @@ class TreeManager:
 
     def copy_action(self):
         """Delegates copy command to the active editor instance."""
-        current_index = self.editor_manager.tabs.currentIndex()
-        if current_index >= 0:
-            current_page = self.editor_manager.tabs.widget(current_index)
-            current_page.editor.copy()
+        self.copy_requested.emit()
 
     def paste_action(self):
         """Delegates paste command to the active editor instance."""
-        current_index = self.editor_manager.tabs.currentIndex()
-        if current_index >= 0:
-            current_page = self.editor_manager.tabs.widget(current_index)
-            current_page.editor.paste()
+        self.paste_requested.emit()
 
     def exit_file_action(self):
         """Requests closure of the current tab buffer."""
-        current_index = self.editor_manager.tabs.currentIndex()
-        if current_index >= 0:
-            self.editor_manager.close_page(current_index)
+        self.close_tab_requested.emit()
 
     def save_file_action(self):
         """Triggers direct file save."""
-        self.editor_manager.save_current_page()
+        self.save_file_requested.emit()
 
     def save_as_file_action(self):
         """Triggers save as dialog."""
-        self.editor_manager.save_as_current_page()
+        self.save_as_file_requested.emit()
 
     def open_file_action(self):
         """Launches native file selector and updates workspace context."""
@@ -262,7 +244,7 @@ class TreeManager:
                 with open(file_path, 'r', encoding='latin-1') as f:
                     content = f.read()
                 file_name = os.path.basename(file_path)
-                self.editor_manager.add_new_page(file_name, content, file_path)
+                self.file_opened.emit(file_name, content, file_path)
                 # Synchronize tree to the file's parent folder
                 self.tree.setRootIndex(self.model.index(os.path.dirname(file_path)))
             except Exception as e:
@@ -270,7 +252,7 @@ class TreeManager:
 
     def new_file_action(self):
         """Initializes a blank document in the editor."""
-        self.editor_manager.add_new_page("Untitled*", "", "")
+        self.new_file_requested.emit()
 
     def open_dir_action(self):
         """Changes the root of the file explorer to a new folder selection."""

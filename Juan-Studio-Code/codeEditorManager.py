@@ -3,8 +3,11 @@ import os
 from PySide6.QtWidgets import QPlainTextEdit, QVBoxLayout, QHBoxLayout, QWidget, QTextEdit, QLabel, QMessageBox, QFileDialog, QMenu, QInputDialog
 from PySide6.QtCore import Qt, QRect, QSize
 from PySide6.QtGui import QPainter, QColor, QTextFormat
-from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QFont, QTextCursor, QTextDocument
+from PySide6.QtGui import QTextCharFormat, QFont, QTextCursor, QTextDocument
 from PySide6.QtCore import QRegularExpression
+
+from components.theme import Theme
+from components.highlighter import Highlighter
 
 # ============================================================
 # ARCHITECTURE: GRAPHICAL EDITOR ENGINE
@@ -54,151 +57,7 @@ class LineNumberArea(QWidget):
         self.code_editor.lineNumberAreaPaintEvent(event)
 
 
-# =====================================================================
-# CLASS: Highlighter (SYNTAX HIGHLIGHTING ENGINE)
-# Scans the editor's document using Regular Expressions to apply
-# visual styles (colors, bold, italics) to specific code tokens.
-#
-# Components: QSyntaxHighlighter, QRegularExpression, QTextCharFormat.
-# Interaction: Attaches to the QTextDocument of the editor and
-# re-highlights text blocks whenever they are modified.
-# =====================================================================
-class Highlighter(QSyntaxHighlighter):
-    # ============================================================
-    # METHOD: __init__
-    # What it does: Defines the language grammar and visual palette.
-    # Components: QTextCharFormat for styling, QRegularExpression for matching.
-    # Interaction: Populates a list of rules that map patterns to styles.
-    # ============================================================
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.highlightingRules = []
 
-        # ----------------------------------------------------
-        # STYLING DEFINITIONS (DARK MODE THEME)
-        # ----------------------------------------------------
-
-        # Structural Keywords (Pink/Red Monokai style)
-        keywordFormat = QTextCharFormat()
-        keywordFormat.setForeground(QColor("#ff6480"))
-        keywordFormat.setFontItalic(True)
-
-        # Data Types (Cyan/Teal)
-        typeFormat = QTextCharFormat()
-        typeFormat.setForeground(QColor("#56b6c2"))
-        typeFormat.setFontItalic(True)
-
-        # Numbers (Light Green)
-        numberFormat = QTextCharFormat()
-        numberFormat.setForeground(QColor("#B5CEA8"))
-
-        # Strings, Chars, and angle-bracket headers (Orange/Yellow)
-        stringFormat = QTextCharFormat()
-        stringFormat.setForeground(QColor("#e5c07b"))
-
-        # Operators and Symbols (Light Gray)
-        operatorFormat = QTextCharFormat()
-        operatorFormat.setForeground(QColor("#AAAAAA"))
-
-        # Comments (Green)
-        self.commentFormat = QTextCharFormat()
-        self.commentFormat.setForeground(QColor("#6A9955"))
-        self.commentFormat.setFontItalic(True)
-
-        # Preprocessor Directives (Purple Bold)
-        self.librariesFormat = QTextCharFormat()
-        self.librariesFormat.setForeground(QColor("#C586C0"))
-        self.librariesFormat.setFontItalic(True)
-        self.librariesFormat.setFontWeight(QFont.Bold)
-
-        # ----------------------------------------------------
-        # REGEX MAPPING
-        # ----------------------------------------------------
-
-        # Structural Keywords mapping
-        keywords = [
-            r"\bif\b", r"\belse\b", r"\bend\b", r"\bdo\b", r"\bwhile\b", r"\bthen\b",
-            r"\bswitch\b", r"\bcase\b", r"\bmain\b", r"\bcin\b", r"\bcout\b",
-            r"\bbreak\b", r"\bcontinue\b", r"\bfor\b", r"\bgoto\b", r"\breturn\b",
-            r"\btry\b", r"\bcatch\b", r"\bthrow\b", r"\bclass\b", r"\bstruct\b",
-            r"\bpublic\b", r"\bprivate\b", r"\bprotected\b", r"\bvirtual\b",
-            r"\bfriend\b", r"\binline\b", r"\btemplate\b", r"\btypename\b",
-            r"\bthis\b", r"\bnew\b", r"\bdelete\b", r"\benum\b", r"\bunion\b",
-            r"\bnamespace\b", r"\busing\b", r"\btypedef\b", r"\bsizeof\b",
-            r"\bstatic\b", r"\bconst\b", r"\bextern\b", r"\bexplicit\b",
-            r"\boperator\b", r"\bconstexpr\b", r"\bdecltype\b", r"\bnoexcept\b",
-            r"\bvolatile\b", r"\bdefault\b", r"\btrue\b", r"\bfalse\b", r"\bnullptr\b"
-        ]
-        for word in keywords:
-            self.highlightingRules.append((QRegularExpression(word), keywordFormat))
-
-        # Data types mapping
-        data_types = [
-            r"\bint\b", r"\bfloat\b", r"\bstring\b", r"\bbool\b", r"\bchar\b",
-            r"\bdouble\b", r"\blong\b", r"\bshort\b", r"\bvoid\b", r"\bauto\b",
-            r"\bsigned\b", r"\bunsigned\b", r"\bwchar_t\b"
-        ]
-        for word in data_types:
-            self.highlightingRules.append((QRegularExpression(word), typeFormat))
-
-        # Directives, Numbers, Strings, and Operators rules
-        self.highlightingRules.append((QRegularExpression(r"#include"), self.librariesFormat))
-        self.highlightingRules.append((QRegularExpression(r"#define"), self.librariesFormat))
-        self.highlightingRules.append((QRegularExpression(r"\b[0-9]+(\.[0-9]+)?\b"), numberFormat))
-        self.highlightingRules.append((QRegularExpression(r'".*"'), stringFormat))
-        self.highlightingRules.append((QRegularExpression(r"'.?'"), stringFormat))
-        self.highlightingRules.append((QRegularExpression(r"<[a-zA-Z0-9_.]+>"), stringFormat))
-
-        operators = [
-            r"\+", r"-", r"\*", r"/", r"%", r"\^", r"\+\+", r"--",
-            r"<", r"<=", r">", r">=", r"==", r"!=", r"=", r"&&", r"\|\|", r"!",
-            r"\(", r"\)", r"\{", r"\}", r",", r";", r":"
-        ]
-        for op in operators:
-            self.highlightingRules.append((QRegularExpression(op), operatorFormat))
-
-        self.highlightingRules.append((QRegularExpression(r"//[^\n]*"), self.commentFormat))
-
-        # Block comment logic (state-dependent)
-        self.commentStartExpression = QRegularExpression(r"/\*")
-        self.commentEndExpression = QRegularExpression(r"\*/")
-
-    # ============================================================
-    # METHOD: highlightBlock
-    # What it does: Applies highlighting rules to a specific line.
-    # Interaction: Uses Qt's state management to handle multi-line
-    # comments spanning several blocks.
-    # ============================================================
-    def highlightBlock(self, text):
-        # Apply all independent single-line rules
-        for pattern, format in self.highlightingRules:
-            matchIterator = pattern.globalMatch(text)
-            while matchIterator.hasNext():
-                match = matchIterator.next()
-                self.setFormat(match.capturedStart(), match.capturedLength(), format)
-
-        # Multi-line comment processing (State: 0 = Code, 1 = Comment)
-        self.setCurrentBlockState(0)
-        startIndex = 0
-
-        if self.previousBlockState() != 1:
-            match = self.commentStartExpression.match(text)
-            startIndex = match.capturedStart()
-
-        while startIndex >= 0:
-            endMatch = self.commentEndExpression.match(text, startIndex)
-            endIndex = endMatch.capturedStart()
-            commentLength = 0
-
-            if endIndex == -1:
-                self.setCurrentBlockState(1)
-                commentLength = len(text) - startIndex
-            else:
-                commentLength = endIndex - startIndex + endMatch.capturedLength()
-
-            self.setFormat(startIndex, commentLength, self.commentFormat)
-            startMatch = self.commentStartExpression.match(text, startIndex + commentLength)
-            startIndex = startMatch.capturedStart()
 
 
 # =====================================================================
@@ -292,7 +151,7 @@ class CodeEditor(QPlainTextEdit):
         extra_selections = []
         if not self.isReadOnly():
             selection = QTextEdit.ExtraSelection()
-            line_color = QColor("#2d2d30")
+            line_color = QColor(Theme.CURRENT_LINE_BG)
             selection.format.setBackground(line_color)
             selection.format.setProperty(QTextFormat.FullWidthSelection, True)
             selection.cursor = self.textCursor()
@@ -310,7 +169,7 @@ class CodeEditor(QPlainTextEdit):
         selection = QTextEdit.ExtraSelection()
         format = QTextCharFormat()
         format.setUnderlineStyle(QTextCharFormat.SpellCheckUnderline)
-        format.setUnderlineColor(QColor("red"))
+        format.setUnderlineColor(QColor(Theme.ERROR_SQUIGGLY))
         selection.format = format
         
         cursor = self.textCursor()
@@ -343,7 +202,7 @@ class CodeEditor(QPlainTextEdit):
     # ============================================================
     def lineNumberAreaPaintEvent(self, event):
         painter = QPainter(self.line_number_area)
-        painter.fillRect(event.rect(), QColor("#1e1e1e"))
+        painter.fillRect(event.rect(), QColor(Theme.GUTTER_BG))
 
         block = self.firstVisibleBlock()
         block_number = block.blockNumber()
@@ -353,7 +212,7 @@ class CodeEditor(QPlainTextEdit):
         while block.isValid() and top <= event.rect().bottom():
             if block.isVisible() and bottom >= event.rect().top():
                 number = str(block_number + 1)
-                painter.setPen(QColor("#858585"))
+                painter.setPen(QColor(Theme.GUTTER_TEXT))
                 painter.drawText(
                     0, top, self.line_number_area.width() - 5,
                     self.fontMetrics().height(),

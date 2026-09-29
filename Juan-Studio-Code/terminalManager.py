@@ -5,12 +5,9 @@ import os, sys, re
 
 # =====================================================================
 # BACKEND MODULE INTEGRATION
-# This section ensures that the 'Analizador_Lexico' directory is
-# accessible to the Python interpreter, allowing the import of the
-# custom SCANNER component.
+# Imports the core compiler modules using proper Python package paths.
 # =====================================================================
-sys.path.append(os.path.join(os.getcwd(), 'Analizador_Lexico'))
-from SCAN import SCANNER
+from Analizador_Lexico.SCAN import SCANNER
 
 
 # =====================================================================
@@ -283,22 +280,14 @@ class TerminalManager(QTabWidget):
             return
             
         try:
-            # Import visualization logic
-            import sys
-            import os
-            sys.path.append(os.path.join(os.getcwd(), 'Analizador_Sintactico'))
-            
-            # Make sure astVisualizer is importable
-            from astVisualizer import ASTHtmlGenerator, ASTVisualizerDialog
-            
-            # Generate the HTML
-            html_content = ASTHtmlGenerator.arbol_a_html(self.current_ast, getattr(self, 'current_syntax_errors', []))
+            # Use the unified scalable graphical visualizer
+            from components.tree_visualizer import GraphicalTreeVisualizer
             
             # Instantiate and display the dialog persistently
             if not hasattr(self, '_ast_visualizer_dialog') or self._ast_visualizer_dialog is None:
-                self._ast_visualizer_dialog = ASTVisualizerDialog(self)
+                self._ast_visualizer_dialog = GraphicalTreeVisualizer(self, "Syntactic AST Visualization")
                 
-            self._ast_visualizer_dialog.load_html_content(html_content)
+            self._ast_visualizer_dialog.render_tree(self.current_ast, getattr(self, 'current_syntax_errors', []))
             self._ast_visualizer_dialog.show()
             self._ast_visualizer_dialog.raise_()
             self._ast_visualizer_dialog.activateWindow()
@@ -529,9 +518,8 @@ class TerminalManager(QTabWidget):
         if not source_code:
             return
 
-        import sys
-        sys.path.append(os.path.join(os.getcwd(), 'Analizador_Sintactico'))
-        from analizador_sintactico import Parser, ParserSignals
+        from Analizador_Sintactico.analizador_sintactico import Parser
+        from Analizador_Sintactico.ASTNode import ParserSignals
         
         # Initialize memory storage for AST Visualization
         self.current_ast = None

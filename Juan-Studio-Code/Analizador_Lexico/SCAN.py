@@ -1,5 +1,5 @@
 import os
-from GLOBALS import TokenType, State
+from .GLOBALS import TokenType, State
 
 # =====================================================================
 # CORE MODULE: LEXICAL ANALYZER (SCANNER CLASS)

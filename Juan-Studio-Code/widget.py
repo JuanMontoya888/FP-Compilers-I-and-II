@@ -43,7 +43,7 @@ class Widget(QWidget):
         self.ui.setupUi(self)
 
         # Global state tracking for the current workspace
-        self.current_path =  "C:/Users/Juan/Desktop/" or os.getcwd()
+        self.current_path = os.path.expanduser("~")
         self.current_file_selected = None
 
         # Load external stylesheet
@@ -134,13 +134,23 @@ class Widget(QWidget):
         self.editor_manager = CodeEditorManager(self.ui.tabWidget, self)
 
         # Orchestrate File System interaction linked to the editor and terminal
-        self.explorer = TreeManager(self.ui.treeView, self.ui, self.editor_manager, self.terminal_manager, self)
+        # Decoupled via Signals!
+        self.explorer = TreeManager(self.ui.treeView, self.ui, self)
 
+        # Connect TreeManager Signals to EditorManager Slots
+        self.explorer.file_opened.connect(self.editor_manager.add_new_page)
+        self.explorer.new_file_requested.connect(lambda: self.editor_manager.add_new_page("Untitled*", "", ""))
+        self.explorer.save_file_requested.connect(self.editor_manager.save_current_page)
+        self.explorer.save_as_file_requested.connect(self.editor_manager.save_as_current_page)
+        self.explorer.close_tab_requested.connect(lambda: self.editor_manager.close_page(self.editor_manager.tabs.currentIndex()))
+        
+        self.explorer.copy_requested.connect(self._delegate_copy)
+        self.explorer.paste_requested.connect(self._delegate_paste)
+        
+        # We will connect Terminal signals below in setup_connections
+        
         # Attach keyboard shortcut listeners to the window
         self.atajos = Shortcuts(self, self.explorer, self.editor_manager)
-
-        # Final cross-reference injection
-        self.editor_manager.tree_manager = self.explorer
 
         # Initialize the custom context menu for the file explorer
         self.context_menu_manager = ExplorerContextMenuManager(
@@ -148,6 +158,20 @@ class Widget(QWidget):
             self.explorer.model, 
             self.explorer
         )
+
+    def _delegate_copy(self):
+        current_index = self.editor_manager.tabs.currentIndex()
+        if current_index >= 0:
+            current_page = self.editor_manager.tabs.widget(current_index)
+            if hasattr(current_page, 'editor'):
+                current_page.editor.copy()
+
+    def _delegate_paste(self):
+        current_index = self.editor_manager.tabs.currentIndex()
+        if current_index >= 0:
+            current_page = self.editor_manager.tabs.widget(current_index)
+            if hasattr(current_page, 'editor'):
+                current_page.editor.paste()
 
 
     # ============================================================
@@ -220,7 +244,28 @@ class Widget(QWidget):
         self.ui.saveAsFileButton.clicked.connect(self.explorer.save_as_file_action)
         self.ui.saveFileButton.clicked.connect(self.explorer.save_file_action)
         self.ui.newDirectoryButton.clicked.connect(self.explorer.open_dir_action)
+        
+        # Connect Terminal signals from TreeManager
+        self.explorer.terminal_toggle_requested.connect(self._toggle_terminal)
+        self.explorer.terminal_clear_requested.connect(self._clear_terminal)
+        self.explorer.terminal_kill_requested.connect(self._kill_terminal_process)
+        self.explorer.compile_action_requested.connect(lambda idx: self.open_bottom_panel(idx, execute_analysis=True))
 
+    def _toggle_terminal(self):
+        if self.terminal_manager.isVisible():
+            self.terminal_manager.hide()
+        else:
+            self.terminal_manager.show()
+
+    def _clear_terminal(self):
+        self.terminal_manager.terminal_edit.clear()
+        self.terminal_manager.interactive_position = 0
+
+    def _kill_terminal_process(self):
+        if self.terminal_manager.process.state() != self.terminal_manager.process.NotRunning:
+            self.terminal_manager.process.kill()
+            self.terminal_manager.terminal_edit.appendPlainText("\n[PROCESS TERMINATED BY USER]\n")
+            self.terminal_manager.interactive_position = self.terminal_manager.terminal_edit.textCursor().position()
 
     # ============================================================
     # METHOD: open_bottom_panel (VIEW CONTROLLER)
@@ -229,20 +274,21 @@ class Widget(QWidget):
     # How it interacts: Triggers backend analysis (Lexical, etc.) based
     # on the active index and forces UI focus on the bottom area.
     # ============================================================
-    def open_bottom_panel(self, tab_index):
+    def open_bottom_panel(self, tab_index, execute_analysis=True):
         """
         Switches console tabs and triggers corresponding compiler logic.
         """
-        # Execution Switch: Trigger backend task based on requested view
-        match(tab_index):
-            case 1:
-                # Clear terminal
-                self.terminal_manager.errores.clear()
-                # Trigger background lexical processing
-                self.terminal_manager.execute_lexical(self.current_file_selected)
-            case 2:
-                # Trigger syntactic processing
-                self.terminal_manager.execute_syntactic(self.current_file_selected)
+        if execute_analysis:
+            # Execution Switch: Trigger backend task based on requested view
+            match(tab_index):
+                case 1:
+                    # Clear terminal
+                    self.terminal_manager.errores.clear()
+                    # Trigger background lexical processing
+                    self.terminal_manager.execute_lexical(self.current_file_selected)
+                case 2:
+                    # Trigger syntactic processing
+                    self.terminal_manager.execute_syntactic(self.current_file_selected)
 
         # Switch tab index and ensure the widget is visible to the user
         self.terminal_manager.setCurrentIndex(tab_index)

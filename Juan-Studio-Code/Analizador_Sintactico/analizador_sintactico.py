@@ -1,5 +1,5 @@
 from Analizador_Lexico.GLOBALS import TokenType
-from ASTNode import ASTNode, ParserSignals, Token
+from .ASTNode import ASTNode, ParserSignals, Token
 
 # =====================================================================
 # CORE MODULE: SYNTAX ANALYZER (PARSER CLASS)
@@ -206,16 +206,16 @@ class Parser:
         # Consuming 'main'
         main_token = self.match(TokenType.MAIN)
         if not main_token:
-            return None
+            return node
             
-        if not self.match(TokenType.LBRACE): return None
+        if not self.match(TokenType.LBRACE): node.has_error = True; return node
         
         decls = self.lista_declaracion()
         for d in decls:
             if d is not None:
                 node.add_child(d)
             
-        if not self.match(TokenType.RBRACE): return None
+        if not self.match(TokenType.RBRACE): node.has_error = True; return node
         return node
 
     # =====================================================================
@@ -265,7 +265,7 @@ class Parser:
         while True:
             id_token = self.match(TokenType.ID)
             if not id_token:
-                return None
+                return node
                 
             child = ASTNode("Identifier", id_token.lexema, line=id_token.linea, col=id_token.columna)
             
@@ -288,7 +288,7 @@ class Parser:
                 break
                 
         if not self.match(TokenType.SEMI):
-            return None
+            return node
             
         return node
 
@@ -361,8 +361,9 @@ class Parser:
                 return self.asignacion()
         else:
             self.report_error("Invalid statement start")
-            # If an invalid start is encountered, synchronize and abort this branch
-            return None
+            err_node = ASTNode("Syntax Error", "Invalid Statement", line=token.linea, col=token.columna)
+            err_node.has_error = True
+            return err_node
 
     # =====================================================================
     # METHOD: seleccion
@@ -375,33 +376,33 @@ class Parser:
         node = ASTNode("Selection (if)", line=token.linea, col=token.columna)
         self.emit_node("Selection (if)", "")
         
-        if not self.match(TokenType.IF): return None
-        if not self.match(TokenType.LPAREN): return None
+        if not self.match(TokenType.IF): node.has_error = True; return node
+        if not self.match(TokenType.LPAREN): node.has_error = True; return node
         
         exp_node = self.expresion()
         if exp_node is not None:
             node.add_child(exp_node)
             
-        if not self.match(TokenType.RPAREN): return None
+        if not self.match(TokenType.RPAREN): node.has_error = True; return node
         
-        if not self.match(TokenType.LBRACE): return None
+        if not self.match(TokenType.LBRACE): node.has_error = True; return node
         then_block = ASTNode("Then Block", line=token.linea, col=token.columna)
         for s in self.lista_declaracion():
             if s is not None:
                 then_block.add_child(s)
-        if not self.match(TokenType.RBRACE): return None
+        if not self.match(TokenType.RBRACE): node.has_error = True; return node
         node.add_child(then_block)
         
         if self.current_token().tipo == TokenType.ELSE:
             el_token = self.match(TokenType.ELSE)
-            if not self.match(TokenType.LBRACE): return None
+            if not self.match(TokenType.LBRACE): node.has_error = True; return node
             
             else_block = ASTNode("Else Block", line=el_token.linea, col=el_token.columna)
             for s in self.lista_declaracion():
                 if s is not None:
                     else_block.add_child(s)
                     
-            if not self.match(TokenType.RBRACE): return None
+            if not self.match(TokenType.RBRACE): node.has_error = True; return node
             node.add_child(else_block)
             
         return node
@@ -417,21 +418,21 @@ class Parser:
         node = ASTNode("Iteration (while)", line=token.linea, col=token.columna)
         self.emit_node("Iteration (while)", "")
         
-        if not self.match(TokenType.WHILE): return None
-        if not self.match(TokenType.LPAREN): return None
+        if not self.match(TokenType.WHILE): node.has_error = True; return node
+        if not self.match(TokenType.LPAREN): node.has_error = True; return node
         
         exp_node = self.expresion()
         if exp_node is not None:
             node.add_child(exp_node)
             
-        if not self.match(TokenType.RPAREN): return None
+        if not self.match(TokenType.RPAREN): node.has_error = True; return node
         
-        if not self.match(TokenType.LBRACE): return None
+        if not self.match(TokenType.LBRACE): node.has_error = True; return node
         block = ASTNode("While Body", line=token.linea, col=token.columna)
         for s in self.lista_declaracion():
             if s is not None:
                 block.add_child(s)
-        if not self.match(TokenType.RBRACE): return None
+        if not self.match(TokenType.RBRACE): node.has_error = True; return node
         
         node.add_child(block)
         return node
@@ -447,26 +448,26 @@ class Parser:
         node = ASTNode("Repetition (do-while)", line=token.linea, col=token.columna)
         self.emit_node("Repetition (do-while)", "")
         
-        if not self.match(TokenType.DO): return None
-        if not self.match(TokenType.LBRACE): return None
+        if not self.match(TokenType.DO): node.has_error = True; return node
+        if not self.match(TokenType.LBRACE): node.has_error = True; return node
         
         block = ASTNode("Do Body", line=token.linea, col=token.columna)
         for s in self.lista_declaracion():
             if s is not None:
                 block.add_child(s)
                 
-        if not self.match(TokenType.RBRACE): return None
+        if not self.match(TokenType.RBRACE): node.has_error = True; return node
         node.add_child(block)
         
-        if not self.match(TokenType.WHILE): return None
-        if not self.match(TokenType.LPAREN): return None
+        if not self.match(TokenType.WHILE): node.has_error = True; return node
+        if not self.match(TokenType.LPAREN): node.has_error = True; return node
         
         exp_node = self.expresion()
         if exp_node is not None:
             node.add_child(exp_node)
             
-        if not self.match(TokenType.RPAREN): return None
-        if not self.match(TokenType.SEMI): return None
+        if not self.match(TokenType.RPAREN): node.has_error = True; return node
+        if not self.match(TokenType.SEMI): node.has_error = True; return node
         return node
 
     # =====================================================================
@@ -477,7 +478,12 @@ class Parser:
     # =====================================================================
     def sent_in(self):
         token = self.current_token()
-        if not self.match(TokenType.CIN): return None
+        node = ASTNode("Input (cin)", line=token.linea, col=token.columna)
+        self.emit_node("Input (cin)", "")
+        
+        if not self.match(TokenType.CIN): 
+            node.has_error = True
+            return node
         
         t = self.current_token()
         if t.tipo == TokenType.GT:
@@ -486,18 +492,21 @@ class Parser:
                 self.advance()
             else:
                 self.report_error("Expected >>")
-                return None
+                node.has_error = True
+                return node
         else:
             self.report_error("Expected >>")
-            return None
+            node.has_error = True
+            return node
             
         id_token = self.match(TokenType.ID)
-        if not id_token: return None
+        if not id_token: 
+            node.has_error = True
+            return node
+            
+        node.value = id_token.lexema
         
-        node = ASTNode("Input (cin)", id_token.lexema, line=token.linea, col=token.columna)
-        self.emit_node("Input (cin)", id_token.lexema)
-        
-        if not self.match(TokenType.SEMI): return None
+        if not self.match(TokenType.SEMI): node.has_error = True; return node
         return node
 
     # =====================================================================
@@ -508,7 +517,13 @@ class Parser:
     # =====================================================================
     def sent_out(self):
         token = self.current_token()
-        if not self.match(TokenType.COUT): return None
+        
+        node = ASTNode("Output (cout)", line=token.linea, col=token.columna)
+        self.emit_node("Output (cout)", "")
+        
+        if not self.match(TokenType.COUT): 
+            node.has_error = True
+            return node
         
         t = self.current_token()
         if t.tipo == TokenType.LT:
@@ -517,19 +532,18 @@ class Parser:
                 self.advance()
             else:
                 self.report_error("Expected <<")
-                return None
+                node.has_error = True
+                return node
         else:
             self.report_error("Expected <<")
-            return None
-            
-        node = ASTNode("Output (cout)", line=token.linea, col=token.columna)
-        self.emit_node("Output (cout)", "")
+            node.has_error = True
+            return node
         
         out_node = self.salida()
         if out_node is not None:
             node.add_child(out_node)
             
-        if not self.match(TokenType.SEMI): return None
+        if not self.match(TokenType.SEMI): node.has_error = True; return node
         return node
 
     # =====================================================================
@@ -587,19 +601,23 @@ class Parser:
     # =====================================================================
     def asignacion(self):
         token = self.current_token()
+        node = ASTNode("Assignment", line=token.linea, col=token.columna)
+        self.emit_node("Assignment", "")
+        
         id_token = self.match(TokenType.ID)
-        if not id_token: return None
+        if not id_token: 
+            node.has_error = True
+            return node
+            
+        node.value = id_token.lexema
         
-        node = ASTNode("Assignment", id_token.lexema, line=token.linea, col=token.columna)
-        self.emit_node("Assignment", id_token.lexema)
-        
-        if not self.match(TokenType.ASSIGN): return None
+        if not self.match(TokenType.ASSIGN): node.has_error = True; return node
         
         exp_node = self.expresion()
         if exp_node is not None:
             node.add_child(exp_node)
             
-        if not self.match(TokenType.SEMI): return None
+        if not self.match(TokenType.SEMI): node.has_error = True; return node
         return node
 
     # =====================================================================
@@ -610,8 +628,13 @@ class Parser:
     # =====================================================================
     def operacion_unaria(self):
         token = self.current_token()
+        node = ASTNode("Unary Operation", line=token.linea, col=token.columna)
+        self.emit_node("Unary Operation", "")
+        
         id_token = self.match(TokenType.ID)
-        if not id_token: return None
+        if not id_token: 
+            node.has_error = True
+            return node
         
         op_token = self.current_token()
         if op_token.tipo == TokenType.INC:
@@ -622,13 +645,14 @@ class Parser:
             op_str = "--"
         else:
             self.report_error("Expected ++ or --")
-            return None
+            node.has_error = True
+            return node
             
-        if not self.match(TokenType.SEMI): return None
-        
         val = f"{id_token.lexema}{op_str}"
-        node = ASTNode("Unary Operation", val, line=token.linea, col=token.columna)
+        node.value = val
         self.emit_node("Unary Operation", val)
+        
+        if not self.match(TokenType.SEMI): node.has_error = True; return node
         return node
 
     # =====================================================================
@@ -784,7 +808,7 @@ class Parser:
         elif token.tipo == TokenType.LPAREN:
             self.advance()
             exp_node = self.expresion()
-            if not self.match(TokenType.RPAREN): return None
+            if not self.match(TokenType.RPAREN): return exp_node
             return exp_node
             
         elif token.tipo in [TokenType.NUM_INT, TokenType.NUM_FLOAT]:
