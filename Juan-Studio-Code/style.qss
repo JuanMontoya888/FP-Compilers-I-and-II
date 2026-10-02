@@ -4,34 +4,37 @@
  * ===================================================================== */
 
 /* ----------------------------------------------------
- * ERROR CONSOLE STYLING (QTreeWidget)
+ * UNIFIED TREE/TABLE WIDGET STYLING (QTreeWidget)
+ * Applied to Lexical, Syntax, Semantic, Errors, and Symbol Table
  * ---------------------------------------------------- */
-QTreeWidget#errorTreeWidget {
+QTreeWidget {
     background-color: #1e1e1e;
+    alternate-background-color: #252526;
     color: #d4d4d4;
     font-family: "Consolas", "Courier New", monospace;
     font-size: 13px;
     border: none;
 }
 
-QTreeWidget#errorTreeWidget QHeaderView::section {
-    background-color: #252526;
-    color: #cccccc;
+QHeaderView::section {
+    background-color: #2d2d30;
+    color: #ffffff;
     border: 1px solid #333333;
-    padding: 4px;
+    padding: 6px;
+    font-weight: bold;
 }
 
-QTreeWidget#errorTreeWidget::item {
+QTreeWidget::item {
     padding: 4px;
-    border-radius: 3px;
+    border-right: 1px solid #333333;
 }
 
-QTreeWidget#errorTreeWidget::item:hover {
+QTreeWidget::item:hover {
     background-color: #2a2d2e;
     color: #ffffff;
 }
 
-QTreeWidget#errorTreeWidget::item:selected {
-    background-color: #37373d;
+QTreeWidget::item:selected {
+    background-color: #094771;
     color: #ffffff;
 }

@@ -91,6 +91,7 @@ class Parser:
     # How it interacts: Emits the error via PySide6 signals to the UI console and calls synchronize() to recover.
     # =====================================================================
     def report_error(self, message):
+        self.last_error_message = f"Syntax Error: {message}"
         if not self.panic_mode:
             token = self.current_token()
             error_msg = f"Token: {token.tipo.name} ('{token.lexema}') | {message}"
@@ -208,14 +209,14 @@ class Parser:
         if not main_token:
             return node
             
-        if not self.match(TokenType.LBRACE): node.has_error = True; return node
+        if not self.match(TokenType.LBRACE): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         
         decls = self.lista_declaracion()
         for d in decls:
             if d is not None:
                 node.add_child(d)
             
-        if not self.match(TokenType.RBRACE): node.has_error = True; return node
+        if not self.match(TokenType.RBRACE): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         return node
 
     # =====================================================================
@@ -362,7 +363,7 @@ class Parser:
         else:
             self.report_error("Invalid statement start")
             err_node = ASTNode("Syntax Error", "Invalid Statement", line=token.linea, col=token.columna)
-            err_node.has_error = True
+            err_node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error')
             return err_node
 
     # =====================================================================
@@ -376,33 +377,33 @@ class Parser:
         node = ASTNode("Selection (if)", line=token.linea, col=token.columna)
         self.emit_node("Selection (if)", "")
         
-        if not self.match(TokenType.IF): node.has_error = True; return node
-        if not self.match(TokenType.LPAREN): node.has_error = True; return node
+        if not self.match(TokenType.IF): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
+        if not self.match(TokenType.LPAREN): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         
         exp_node = self.expresion()
         if exp_node is not None:
             node.add_child(exp_node)
             
-        if not self.match(TokenType.RPAREN): node.has_error = True; return node
+        if not self.match(TokenType.RPAREN): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         
-        if not self.match(TokenType.LBRACE): node.has_error = True; return node
+        if not self.match(TokenType.LBRACE): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         then_block = ASTNode("Then Block", line=token.linea, col=token.columna)
         for s in self.lista_declaracion():
             if s is not None:
                 then_block.add_child(s)
-        if not self.match(TokenType.RBRACE): node.has_error = True; return node
+        if not self.match(TokenType.RBRACE): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         node.add_child(then_block)
         
         if self.current_token().tipo == TokenType.ELSE:
             el_token = self.match(TokenType.ELSE)
-            if not self.match(TokenType.LBRACE): node.has_error = True; return node
+            if not self.match(TokenType.LBRACE): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
             
             else_block = ASTNode("Else Block", line=el_token.linea, col=el_token.columna)
             for s in self.lista_declaracion():
                 if s is not None:
                     else_block.add_child(s)
                     
-            if not self.match(TokenType.RBRACE): node.has_error = True; return node
+            if not self.match(TokenType.RBRACE): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
             node.add_child(else_block)
             
         return node
@@ -418,21 +419,21 @@ class Parser:
         node = ASTNode("Iteration (while)", line=token.linea, col=token.columna)
         self.emit_node("Iteration (while)", "")
         
-        if not self.match(TokenType.WHILE): node.has_error = True; return node
-        if not self.match(TokenType.LPAREN): node.has_error = True; return node
+        if not self.match(TokenType.WHILE): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
+        if not self.match(TokenType.LPAREN): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         
         exp_node = self.expresion()
         if exp_node is not None:
             node.add_child(exp_node)
             
-        if not self.match(TokenType.RPAREN): node.has_error = True; return node
+        if not self.match(TokenType.RPAREN): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         
-        if not self.match(TokenType.LBRACE): node.has_error = True; return node
+        if not self.match(TokenType.LBRACE): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         block = ASTNode("While Body", line=token.linea, col=token.columna)
         for s in self.lista_declaracion():
             if s is not None:
                 block.add_child(s)
-        if not self.match(TokenType.RBRACE): node.has_error = True; return node
+        if not self.match(TokenType.RBRACE): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         
         node.add_child(block)
         return node
@@ -448,26 +449,26 @@ class Parser:
         node = ASTNode("Repetition (do-while)", line=token.linea, col=token.columna)
         self.emit_node("Repetition (do-while)", "")
         
-        if not self.match(TokenType.DO): node.has_error = True; return node
-        if not self.match(TokenType.LBRACE): node.has_error = True; return node
+        if not self.match(TokenType.DO): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
+        if not self.match(TokenType.LBRACE): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         
         block = ASTNode("Do Body", line=token.linea, col=token.columna)
         for s in self.lista_declaracion():
             if s is not None:
                 block.add_child(s)
                 
-        if not self.match(TokenType.RBRACE): node.has_error = True; return node
+        if not self.match(TokenType.RBRACE): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         node.add_child(block)
         
-        if not self.match(TokenType.WHILE): node.has_error = True; return node
-        if not self.match(TokenType.LPAREN): node.has_error = True; return node
+        if not self.match(TokenType.WHILE): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
+        if not self.match(TokenType.LPAREN): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         
         exp_node = self.expresion()
         if exp_node is not None:
             node.add_child(exp_node)
             
-        if not self.match(TokenType.RPAREN): node.has_error = True; return node
-        if not self.match(TokenType.SEMI): node.has_error = True; return node
+        if not self.match(TokenType.RPAREN): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
+        if not self.match(TokenType.SEMI): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         return node
 
     # =====================================================================
@@ -482,7 +483,7 @@ class Parser:
         self.emit_node("Input (cin)", "")
         
         if not self.match(TokenType.CIN): 
-            node.has_error = True
+            node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error')
             return node
         
         t = self.current_token()
@@ -492,21 +493,21 @@ class Parser:
                 self.advance()
             else:
                 self.report_error("Expected >>")
-                node.has_error = True
+                node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error')
                 return node
         else:
             self.report_error("Expected >>")
-            node.has_error = True
+            node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error')
             return node
             
         id_token = self.match(TokenType.ID)
         if not id_token: 
-            node.has_error = True
+            node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error')
             return node
             
         node.value = id_token.lexema
         
-        if not self.match(TokenType.SEMI): node.has_error = True; return node
+        if not self.match(TokenType.SEMI): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         return node
 
     # =====================================================================
@@ -522,7 +523,7 @@ class Parser:
         self.emit_node("Output (cout)", "")
         
         if not self.match(TokenType.COUT): 
-            node.has_error = True
+            node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error')
             return node
         
         t = self.current_token()
@@ -532,18 +533,18 @@ class Parser:
                 self.advance()
             else:
                 self.report_error("Expected <<")
-                node.has_error = True
+                node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error')
                 return node
         else:
             self.report_error("Expected <<")
-            node.has_error = True
+            node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error')
             return node
         
         out_node = self.salida()
         if out_node is not None:
             node.add_child(out_node)
             
-        if not self.match(TokenType.SEMI): node.has_error = True; return node
+        if not self.match(TokenType.SEMI): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         return node
 
     # =====================================================================
@@ -606,18 +607,18 @@ class Parser:
         
         id_token = self.match(TokenType.ID)
         if not id_token: 
-            node.has_error = True
+            node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error')
             return node
             
         node.value = id_token.lexema
         
-        if not self.match(TokenType.ASSIGN): node.has_error = True; return node
+        if not self.match(TokenType.ASSIGN): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         
         exp_node = self.expresion()
         if exp_node is not None:
             node.add_child(exp_node)
             
-        if not self.match(TokenType.SEMI): node.has_error = True; return node
+        if not self.match(TokenType.SEMI): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         return node
 
     # =====================================================================
@@ -633,7 +634,7 @@ class Parser:
         
         id_token = self.match(TokenType.ID)
         if not id_token: 
-            node.has_error = True
+            node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error')
             return node
         
         op_token = self.current_token()
@@ -645,14 +646,14 @@ class Parser:
             op_str = "--"
         else:
             self.report_error("Expected ++ or --")
-            node.has_error = True
+            node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error')
             return node
             
         val = f"{id_token.lexema}{op_str}"
         node.value = val
         self.emit_node("Unary Operation", val)
         
-        if not self.match(TokenType.SEMI): node.has_error = True; return node
+        if not self.match(TokenType.SEMI): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         return node
 
     # =====================================================================

@@ -51,7 +51,8 @@ class GraphicalTreeVisualizer(QDialog):
         
         # Show errors on top if any
         if errors:
-            err_text = "Syntax Errors:\n" + "\n".join(errors)
+            title = "Semantic Errors:\n" if any("Semantic" in e for e in errors) else "Syntax Errors:\n"
+            err_text = title + "\n".join(errors)
             t_item = self.scene.addText(err_text)
             t_item.setDefaultTextColor(QColor("#ff5555"))
             t_item.setPos(-self.MIN_NODE_WIDTH/2, -100)

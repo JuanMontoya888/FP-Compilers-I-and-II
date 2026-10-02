@@ -1,7 +1,7 @@
 # This Python file uses the following encoding: utf-8
 import os
-from PySide6.QtWidgets import QPlainTextEdit, QVBoxLayout, QHBoxLayout, QWidget, QTextEdit, QLabel, QMessageBox, QFileDialog, QMenu, QInputDialog
-from PySide6.QtCore import Qt, QRect, QSize
+from PySide6.QtWidgets import QPlainTextEdit, QVBoxLayout, QHBoxLayout, QWidget, QTextEdit, QLabel, QMessageBox, QFileDialog, QMenu, QInputDialog, QToolTip
+from PySide6.QtCore import Qt, QRect, QSize, QEvent
 from PySide6.QtGui import QPainter, QColor, QTextFormat
 from PySide6.QtGui import QTextCharFormat, QFont, QTextCursor, QTextDocument
 from PySide6.QtCore import QRegularExpression
@@ -90,6 +90,7 @@ class CodeEditor(QPlainTextEdit):
 
         self.update_line_number_area_width(0)
         self.error_selections = []
+        self.error_messages = []
         self.highlight_current_line()
         self.tree_manager = None
 
@@ -165,7 +166,7 @@ class CodeEditor(QPlainTextEdit):
     # METHOD: add_error_highlight
     # What it does: Adds a red squiggly line under the specified word.
     # ============================================================
-    def add_error_highlight(self, line, col):
+    def add_error_highlight(self, line, col, msg=""):
         selection = QTextEdit.ExtraSelection()
         format = QTextCharFormat()
         format.setUnderlineStyle(QTextCharFormat.SpellCheckUnderline)
@@ -176,22 +177,60 @@ class CodeEditor(QPlainTextEdit):
         cursor.movePosition(QTextCursor.Start)
         cursor.movePosition(QTextCursor.Down, QTextCursor.MoveAnchor, line)
         cursor.movePosition(QTextCursor.Right, QTextCursor.MoveAnchor, col)
-        cursor.movePosition(QTextCursor.EndOfWord, QTextCursor.KeepAnchor)
         
-        if cursor.selectedText() == "":
-            cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 1)
+        # Calculate length to next space or semicolon to capture full expressions like 32.32
+        block_text = cursor.block().text()[col:]
+        import re
+        match = re.search(r'[\s;]', block_text)
+        length = match.start() if match else len(block_text)
+        if length == 0:
+            length = 1
+            
+        cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, length)
             
         selection.cursor = cursor
         self.error_selections.append(selection)
+        
+        # Guardar la información del error para el tooltip interactivo
+        length = len(cursor.selectedText())
+        if msg:
+            self.error_messages.append({
+                "line": line,
+                "start_col": col,
+                "end_col": col + length,
+                "msg": msg
+            })
+            
         self.highlight_current_line()
 
     # ============================================================
     # METHOD: clear_error_highlights
-    # What it does: Clears all red squiggly underlines.
+    # What it does: Clears all red squiggly underlines and tooltips.
     # ============================================================
     def clear_error_highlights(self):
         self.error_selections.clear()
+        self.error_messages.clear()
         self.highlight_current_line()
+
+    # ============================================================
+    # METHOD: event
+    # What it does: Intercepts events, particularly ToolTip events,
+    # to display error messages when hovering over red squiggly lines.
+    # ============================================================
+    def event(self, event):
+        if event.type() == QEvent.ToolTip:
+            cursor = self.cursorForPosition(event.pos())
+            line = cursor.blockNumber()
+            col = cursor.positionInBlock()
+            
+            for err in self.error_messages:
+                if err["line"] == line and err["start_col"] <= col <= err["end_col"]:
+                    QToolTip.showText(event.globalPos(), err["msg"], self)
+                    return True
+                    
+            QToolTip.hideText()
+            
+        return super().event(event)
 
     # ============================================================
     # METHOD: lineNumberAreaPaintEvent
@@ -510,13 +549,15 @@ class CodeEditorManager:
         current_index = self.tabs.currentIndex()
         if current_index >= 0:
             current_page = self.tabs.widget(current_index)
-            start_path = current_page.file_path or self.main_app.current_path
+            start_path = current_page.file_path
+            if not start_path:
+                start_path = os.path.join(self.main_app.current_path, "untitled.jpp") if self.main_app.current_path else "untitled.jpp"
 
             file_path, _ = QFileDialog.getSaveFileName(
                 self.tabs,
                 "Save As...",
                 start_path,
-                "All Files (*);;Text Files (*.txt);;Python Files (*.py)"
+                "JPP Files (*.jpp);;All Files (*.*)"
             )
 
             if file_path:

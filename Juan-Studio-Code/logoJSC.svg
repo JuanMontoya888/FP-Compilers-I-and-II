@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Filtro para el resplandor rosa (glow) -->
+    <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="16" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Resplandor exterior detrás del icono -->
+  <rect x="80" y="80" width="352" height="352" rx="84" fill="#FF55CC" filter="url(#neon-glow)" opacity="0.6" />
+
+  <!-- Fondo negro del logo (App Icon) -->
+  <rect x="80" y="80" width="352" height="352" rx="84" fill="#0A0A0A" />
+
+  <!-- Elementos centrales de código -->
+  <g fill="#FF55CC" stroke="#FF55CC" stroke-linejoin="miter">
+    
+    <!-- Corchete izquierdo < -->
+    <polyline points="204,186 124,256 204,326" fill="none" stroke-width="36" stroke-linecap="butt" />
+
+    <!-- Corchete derecho > -->
+    <polyline points="308,186 388,256 308,326" fill="none" stroke-width="36" stroke-linecap="butt" />
+
+    <!-- Punto superior de la letra j -->
+    <rect x="238" y="124" width="36" height="36" stroke="none" />
+
+    <!-- Cuerpo y gancho angular de la letra j -->
+    <path d="M238,176 h36 v144 l-16,16 h-38 v-36 h18 v-124 Z" stroke="none" />
+    
+  </g>
+</svg>

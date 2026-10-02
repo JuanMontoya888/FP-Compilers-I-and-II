@@ -79,51 +79,17 @@ class TerminalManager(QTabWidget):
         # Initialize read-only views for compiler stages
         self.lexico_output = QTreeWidget()
         self.lexico_output.setHeaderLabels(["Token Type", "Lexeme", "Line/Column"])
-        self.lexico_output.setStyleSheet("""
-            QTreeWidget {
-                background-color: #1e1e1e;
-                color: #d4d4d4;
-                border: 1px solid #333333;
-            }
-            QTreeWidget::item:hover {
-                background-color: #2a2d2e;
-            }
-            QTreeWidget::item:selected {
-                background-color: #094771;
-            }
-            QHeaderView::section {
-                background-color: #252526;
-                color: #cccccc;
-                border: 1px solid #333333;
-                padding: 4px;
-            }
-        """)
+        self.lexico_output.setAlternatingRowColors(True)
         self.addTab(self.lexico_output, "Lexical Analysis")
 
         self.sintactico_output = QTreeWidget()
         self.sintactico_output.setHeaderLabels(["Syntax Node", "Value / Code", "Line/Column"])
-        self.sintactico_output.setStyleSheet("""
-            QTreeWidget {
-                background-color: #1e1e1e;
-                color: #d4d4d4;
-                border: 1px solid #333333;
-            }
-            QTreeWidget::item:hover {
-                background-color: #2a2d2e;
-            }
-            QTreeWidget::item:selected {
-                background-color: #094771;
-            }
-            QHeaderView::section {
-                background-color: #252526;
-                color: #cccccc;
-                border: 1px solid #333333;
-                padding: 4px;
-            }
-        """)
+        self.sintactico_output.setAlternatingRowColors(True)
         self.addTab(self.sintactico_output, "Syntax Analysis")
 
-        self.semantico_output = QPlainTextEdit()
+        self.semantico_output = QTreeWidget()
+        self.semantico_output.setHeaderLabels(["Semantic Node", "Value / Code", "Line/Column"])
+        self.semantico_output.setAlternatingRowColors(True)
         self.setup_analysis_tab(self.semantico_output, "Waiting for semantic analysis execution...\n")
         self.addTab(self.semantico_output, "Semantic Analysis")
 
@@ -131,13 +97,16 @@ class TerminalManager(QTabWidget):
         self.setup_analysis_tab(self.codigo_intermedio, "Waiting for intermediate code execution...\n")
         self.addTab(self.codigo_intermedio, "Intermediate Code")
 
-        self.tabla = QPlainTextEdit()
+        self.tabla = QTreeWidget()
+        self.tabla.setHeaderLabels(["Name/Lexema", "Data Type", "Memory Offset", "Lines Referenced"])
+        self.tabla.setAlternatingRowColors(True)
         self.setup_analysis_tab(self.tabla, "Symbol Table...\n")
         self.addTab(self.tabla, "Symbol Table")
 
         self.errores = QTreeWidget()
         self.errores.setObjectName("errorTreeWidget")
         self.errores.setHeaderLabels(["Error Type / Description", "Position"])
+        self.errores.setAlternatingRowColors(True)
         self.addTab(self.errores, "Errors")
         self.errores.itemDoubleClicked.connect(self.jump_to_error_tree)
         self.terminal_edit.keyPressEvent = self.terminal_keyPressEvent
@@ -177,9 +146,9 @@ class TerminalManager(QTabWidget):
         self.currentChanged.connect(self._on_tab_changed)
 
     def _on_tab_changed(self, index):
-        # Only show AST Visualization button when Syntax Analysis is the active tab
-        is_syntax_tab = (self.widget(index) == self.sintactico_output)
-        self.btn_visualize_ast.setVisible(is_syntax_tab)
+        # Show AST Visualization button when Syntax Analysis or Semantic Analysis is the active tab
+        is_ast_tab = (self.widget(index) == self.sintactico_output or self.widget(index) == self.semantico_output)
+        self.btn_visualize_ast.setVisible(is_ast_tab)
         
         if self.widget(index) == self.errores:
             self.stop_error_blink()
@@ -208,7 +177,7 @@ class TerminalManager(QTabWidget):
 
     def _toggle_error_tab_color(self):
         index = self.indexOf(self.errores)
-        from PySide6.QtGui import QColor
+
         self.blink_state = not getattr(self, 'blink_state', False)
         color = QColor("#ff5555") if self.blink_state else QColor()
         self.tabBar().setTabTextColor(index, color)
@@ -217,7 +186,7 @@ class TerminalManager(QTabWidget):
         if hasattr(self, 'blink_timer') and self.blink_timer.isActive():
             self.blink_timer.stop()
             index = self.indexOf(self.errores)
-            from PySide6.QtGui import QColor
+
             self.tabBar().setTabTextColor(index, QColor())
 
     def copy_current_tab(self):
@@ -275,19 +244,28 @@ class TerminalManager(QTabWidget):
     def show_ast_visualization(self):
         from PySide6.QtWidgets import QMessageBox
         
-        if not hasattr(self, 'current_ast') or not self.current_ast:
-            QMessageBox.warning(self, "No AST Available", "AST tree not found in memory. Please run a successful Syntax Analysis first.")
+        is_semantic_tab = (self.currentWidget() == self.semantico_output)
+        
+        target_ast = getattr(self, 'current_semantic_ast', None) if is_semantic_tab else getattr(self, 'current_ast', None)
+        target_errors = getattr(self, 'current_semantic_errors', []) if is_semantic_tab else getattr(self, 'current_syntax_errors', [])
+        
+        if not target_ast:
+            QMessageBox.warning(self, "No AST Available", "AST tree not found in memory. Please run the analysis first.")
             return
             
         try:
             # Use the unified scalable graphical visualizer
             from components.tree_visualizer import GraphicalTreeVisualizer
             
+            title = "Semantic AST Visualization" if is_semantic_tab else "Syntactic AST Visualization"
+            
             # Instantiate and display the dialog persistently
             if not hasattr(self, '_ast_visualizer_dialog') or self._ast_visualizer_dialog is None:
-                self._ast_visualizer_dialog = GraphicalTreeVisualizer(self, "Syntactic AST Visualization")
+                self._ast_visualizer_dialog = GraphicalTreeVisualizer(self, title)
+            else:
+                self._ast_visualizer_dialog.setWindowTitle(title)
                 
-            self._ast_visualizer_dialog.render_tree(self.current_ast, getattr(self, 'current_syntax_errors', []))
+            self._ast_visualizer_dialog.render_tree(target_ast, target_errors)
             self._ast_visualizer_dialog.show()
             self._ast_visualizer_dialog.raise_()
             self._ast_visualizer_dialog.activateWindow()
@@ -306,8 +284,14 @@ class TerminalManager(QTabWidget):
     # =====================================================================
     def setup_analysis_tab(self, widget, initial_text):
         """Applies read-only configurations to the analysis tabs."""
-        widget.setReadOnly(True)
-        widget.appendPlainText(initial_text)
+        from PySide6.QtWidgets import QPlainTextEdit, QTreeWidget, QTreeWidgetItem
+        if isinstance(widget, QPlainTextEdit):
+            widget.setReadOnly(True)
+            widget.appendPlainText(initial_text)
+        elif isinstance(widget, QTreeWidget):
+            item = QTreeWidgetItem(widget)
+            item.setText(0, "INFO")
+            item.setText(1, initial_text.strip())
 
 
     # =====================================================================
@@ -477,7 +461,7 @@ class TerminalManager(QTabWidget):
         
         # Poblar QTreeWidget de errores
         if len(errors) > 0:
-            from PySide6.QtGui import QColor
+
             error_color = QColor("#ff5555")
             editor = self.get_current_editor()
             
@@ -485,13 +469,14 @@ class TerminalManager(QTabWidget):
                 line = t[2] if len(t) > 2 else "?"
                 col = t[3] if len(t) > 3 else "?"
                 item = QTreeWidgetItem(self.errores)
-                item.setText(0, f"Lexical Error: Unexpected Token ('{t[1]}')")
+                msg = f"Lexical Error: Unexpected Token ('{t[1]}')"
+                item.setText(0, msg)
                 item.setText(1, f"Ln {line}, Col {col}")
                 item.setForeground(0, error_color)
                 item.setForeground(1, error_color)
                 
                 if editor and str(line).isdigit() and str(col).isdigit():
-                    editor.add_error_highlight(int(line) - 1, int(col) - 1)
+                    editor.add_error_highlight(int(line) - 1, int(col) - 1, msg)
             
             self.alert_errors_tab()
         
@@ -535,14 +520,15 @@ class TerminalManager(QTabWidget):
         self.errores.clear()
         
         def handle_error(mensaje, linea, columna):
-            from PySide6.QtWidgets import QTreeWidgetItem
-            from PySide6.QtGui import QColor
+
+
             
             error_text = f"Syntax Error: {mensaje} (Ln {linea}, Col {columna})"
             self.current_syntax_errors.append(error_text)
             
             item = QTreeWidgetItem(self.errores)
-            item.setText(0, f"Syntax Error: {mensaje}")
+            msg = f"Syntax Error: {mensaje}"
+            item.setText(0, msg)
             item.setText(1, f"Ln {linea}, Col {columna}")
             error_color = QColor("#ff5555")
             item.setForeground(0, error_color)
@@ -550,7 +536,7 @@ class TerminalManager(QTabWidget):
             
             editor = self.get_current_editor()
             if editor and str(linea).isdigit() and str(columna).isdigit():
-                editor.add_error_highlight(int(linea) - 1, int(columna) - 1)
+                editor.add_error_highlight(int(linea) - 1, int(columna) - 1, msg)
             self.alert_errors_tab()
             
         def handle_node(nombre, lexema):
@@ -601,15 +587,93 @@ class TerminalManager(QTabWidget):
         """Processes code and updates the Semantic tab."""
         self.setCurrentIndex(3)
         self.show()
+        
+        # 1. Clear previous errors and tree
         self.semantico_output.clear()
         
         editor = self.get_current_editor()
         if editor:
             editor.clear_error_highlights()
+            
+        if not hasattr(self, 'current_ast') or not self.current_ast:
 
-        # Simulated type and scope validation
-        resultado_simulado = f"=== SEMANTIC RESULT ===\nValidation for:\n{source_code}"
-        self.semantico_output.setPlainText(resultado_simulado)
+            item = QTreeWidgetItem(self.semantico_output)
+            item.setText(0, "ERROR")
+            item.setText(1, "No AST found. Please run Syntax Analysis first.")
+            return
+
+        from Analizador_Semantico.semantic_analyzer import SemanticAnalyzer
+        analyzer = SemanticAnalyzer()
+        
+        annotated_ast, errors = analyzer.analyze(self.current_ast)
+        self.current_semantic_ast = annotated_ast
+        self.current_semantic_errors = [f"Semantic Error: {err['msg']} (Ln {err['line']}, Col {err['col']})" for err in errors]
+        
+
+
+
+        # 2. Add errors to Error Tab
+        if errors:
+            error_color = QColor("#ff5555")
+            for err in errors:
+                item = QTreeWidgetItem(self.errores)
+                msg = f"Semantic Error: {err['msg']}"
+                item.setText(0, msg)
+                item.setText(1, f"Ln {err['line']}, Col {err['col']}")
+                item.setForeground(0, error_color)
+                item.setForeground(1, error_color)
+                
+                if editor and str(err['line']).isdigit() and str(err['col']).isdigit():
+                    editor.add_error_highlight(int(err['line']) - 1, int(err['col']) - 1, msg)
+            self.alert_errors_tab()
+            
+        # 3. Populate QTreeWidget with Semantic AST
+        def renderizar_ast_en_ui(self_ref, ast_root, tree_widget):
+            tree_widget.clear()
+            if not ast_root: return
+                
+            def construir_nodos_ui(nodo_datos, parent_ui):
+                item = QTreeWidgetItem(parent_ui)
+                item.setText(0, nodo_datos.name)
+                item.setText(1, str(nodo_datos.value) if nodo_datos.value else "")
+                line_str = f"Ln {nodo_datos.line}, Col {nodo_datos.col}" if str(nodo_datos.line).isdigit() else ""
+                item.setText(2, line_str)
+                
+                for hijo in nodo_datos.children:
+                    construir_nodos_ui(hijo, item)
+
+            root_item = QTreeWidgetItem(tree_widget)
+            root_item.setText(0, ast_root.name)
+            root_item.setText(1, str(ast_root.value) if ast_root.value else "")
+            line_str_root = f"Ln {ast_root.line}, Col {ast_root.col}" if str(ast_root.line).isdigit() else ""
+            root_item.setText(2, line_str_root)
+            
+            for child in ast_root.children:
+                construir_nodos_ui(child, root_item)
+                
+            tree_widget.expandAll()
+
+        self.semantico_output.setHeaderLabels(["Semantic Node", "Value / Code", "Line/Column"])
+        if isinstance(self.semantico_output, QTreeWidget):
+            renderizar_ast_en_ui(self, annotated_ast, self.semantico_output)
+        else:
+            self.semantico_output.setPlainText("Semantic Phase completed successfully.\nCheck Errors tab for details.")
+            
+        # 4. Populate Symbol Table Tab
+        if isinstance(self.tabla, QTreeWidget):
+            self.tabla.clear()
+            for sym in analyzer.sym_table.all_symbols:
+                item = QTreeWidgetItem(self.tabla)
+                item.setText(0, sym.name)
+                item.setText(1, sym.dtype)
+                item.setText(2, str(sym.offset))
+                item.setText(3, ", ".join(map(str, sym.lines)))
+        else:
+            table_text = "Name | Type | Offset | Lines\n"
+            table_text += "-"*40 + "\n"
+            for sym in analyzer.sym_table.all_symbols:
+                table_text += f"{sym.name} | {sym.dtype} | {sym.offset} | {', '.join(map(str, sym.lines))}\n"
+            self.tabla.setPlainText(table_text)
 
     def execute_intermediate(self, source_code):
         """Generates and displays intermediate code."""

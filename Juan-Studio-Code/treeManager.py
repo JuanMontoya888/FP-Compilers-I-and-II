@@ -238,7 +238,7 @@ class TreeManager(QObject):
 
     def open_file_action(self):
         """Launches native file selector and updates workspace context."""
-        file_path, _ = QFileDialog.getOpenFileName(None, 'Open File', self.main_app.current_path, "All Files (*)")
+        file_path, _ = QFileDialog.getOpenFileName(None, 'Open File', self.main_app.current_path, "JPP Files (*.jpp);;All Files (*.*)")
         if file_path:
             try:
                 with open(file_path, 'r', encoding='latin-1') as f:

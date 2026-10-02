@@ -41,6 +41,10 @@ class Widget(QWidget):
         super().__init__(parent)
         self.ui = Ui_Widget()
         self.ui.setupUi(self)
+        
+        self.setWindowTitle("Juan Studio Code")
+        icon_path = os.path.join(os.path.dirname(__file__), "logoJSC.svg")
+        self.setWindowIcon(QIcon(icon_path))
 
         # Global state tracking for the current workspace
         self.current_path = os.path.expanduser("~")
@@ -213,7 +217,7 @@ class Widget(QWidget):
         current_style = self.styleSheet()
         self.setStyleSheet(current_style + """
             QTabWidget#tabWidget::pane {
-                background-image: url(logoJSC.ico);
+                background-image: url(logoJSC.svg);
                 background-position: center;
                 background-repeat: no-repeat;
             }
@@ -289,6 +293,9 @@ class Widget(QWidget):
                 case 2:
                     # Trigger syntactic processing
                     self.terminal_manager.execute_syntactic(self.current_file_selected)
+                case 3:
+                    # Trigger semantic processing
+                    self.terminal_manager.execute_semantic(self.current_file_selected)
 
         # Switch tab index and ensure the widget is visible to the user
         self.terminal_manager.setCurrentIndex(tab_index)

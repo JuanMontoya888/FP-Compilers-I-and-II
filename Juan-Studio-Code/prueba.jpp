@@ -22,9 +22,6 @@ main {
         }
         y = y + 1;
     }
-if(flag) {
-cout >> "hola";
-}
 
     a++;
     c--;
