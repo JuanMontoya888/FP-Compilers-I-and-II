@@ -1,4 +1,4 @@
-from Analizador_Lexico.GLOBALS import TokenType
+from compiler.lexical_analyzer.GLOBALS import TokenType
 from .ASTNode import ASTNode, ParserSignals, Token
 
 # =====================================================================

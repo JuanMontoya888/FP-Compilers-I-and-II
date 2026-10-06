@@ -63,7 +63,8 @@ class Shortcuts:
         # Logic related to text search and replace.
         # ==========================================
         QShortcut(QKeySequence("Ctrl+F"), self.parent).activated.connect(self.find_in_editor)
-        QShortcut(QKeySequence("Ctrl+Shift+F"), self.parent).activated.connect(self.replace_in_editor)
+        QShortcut(QKeySequence("Ctrl+H"), self.parent).activated.connect(self.replace_in_editor)
+        QShortcut(QKeySequence("Shift+Alt+F"), self.parent).activated.connect(self.format_in_editor)
 
         # ==========================================
         # EXECUTION AND VISIBILITY
@@ -142,6 +143,18 @@ class Shortcuts:
             current_page = self.editor.tabs.widget(current_index)
             if hasattr(current_page, 'editor'):
                 current_page.editor.show_replace_dialog()
+
+    # =====================================================================
+    # METHOD: format_in_editor
+    # What it does: Triggers the format document method on the active code editor.
+    # =====================================================================
+    def format_in_editor(self):
+        """Formats the document in the current tab."""
+        current_index = self.editor.tabs.currentIndex()
+        if current_index >= 0:
+            current_page = self.editor.tabs.widget(current_index)
+            if hasattr(current_page, 'editor'):
+                current_page.editor.format_document()
 
 
     # =====================================================================

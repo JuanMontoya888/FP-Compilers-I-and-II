@@ -7,7 +7,7 @@ import os, sys, re
 # BACKEND MODULE INTEGRATION
 # Imports the core compiler modules using proper Python package paths.
 # =====================================================================
-from Analizador_Lexico.SCAN import SCANNER
+from compiler.lexical_analyzer.SCAN import SCANNER
 
 
 # =====================================================================
@@ -255,7 +255,7 @@ class TerminalManager(QTabWidget):
             
         try:
             # Use the unified scalable graphical visualizer
-            from components.tree_visualizer import GraphicalTreeVisualizer
+            from ide.components.tree_visualizer import GraphicalTreeVisualizer
             
             title = "Semantic AST Visualization" if is_semantic_tab else "Syntactic AST Visualization"
             
@@ -373,6 +373,9 @@ class TerminalManager(QTabWidget):
             cursor.setPosition(self.interactive_position, QTextCursor.KeepAnchor)
             command = cursor.selectedText().strip()
 
+            # Reset tab completion state
+            self._tab_completion_state = None
+
             # Handle internal UI commands (Clear Screen)
             if command.lower() in ['clear', 'cls']:
                 self.terminal_edit.clear()
@@ -387,10 +390,148 @@ class TerminalManager(QTabWidget):
 
             # Send the command string to the PowerShell input stream
             self.process.write((command + "\n").encode('utf-8'))
+            
+            # If command starts with cd, try to track current directory (best effort)
+            if command.lower().startswith('cd '):
+                target_dir = command[3:].strip().strip('"').strip("'")
+                base_dir = getattr(self, 'current_terminal_dir', os.getcwd())
+                new_dir = os.path.normpath(os.path.join(base_dir, target_dir))
+                if os.path.isdir(new_dir):
+                    self.current_terminal_dir = new_dir
+                    
             return
+
+        # Auto-complete on Tab
+        if event.key() == Qt.Key_Tab:
+            self.handle_tab_completion()
+            return
+        else:
+            # Reset tab completion state if any other key is pressed
+            if event.key() not in (Qt.Key_Shift, Qt.Key_Control, Qt.Key_Alt):
+                self._tab_completion_state = None
 
         # Delegate standard keys to base QPlainTextEdit behavior
         QPlainTextEdit.keyPressEvent(self.terminal_edit, event)
+
+    def handle_tab_completion(self):
+        """Implements PowerShell-like tab completion for files and directories."""
+        cursor = self.terminal_edit.textCursor()
+        
+        # If we are already cycling through completions
+        if hasattr(self, '_tab_completion_state') and self._tab_completion_state:
+            state = self._tab_completion_state
+            state['index'] = (state['index'] + 1) % len(state['matches'])
+            
+            # Replace current word with new match
+            cursor.setPosition(state['start_pos'])
+            cursor.setPosition(state['end_pos'], QTextCursor.KeepAnchor)
+            
+            match = state['matches'][state['index']]
+            # Quote if contains space
+            if ' ' in match: match = f'"{match}"'
+            
+            cursor.insertText(match)
+            state['end_pos'] = state['start_pos'] + len(match)
+            return
+
+        # Start a new completion search
+        cursor.setPosition(self.interactive_position, QTextCursor.KeepAnchor)
+        input_text = cursor.selectedText()
+        
+        if not input_text:
+            return
+            
+        # Find the last word being typed
+        import shlex
+        try:
+            # Simple split by spaces, but ignoring spaces inside quotes
+            # Fallback to simple split if shlex fails on unclosed quotes
+            words = []
+            current_word = ""
+            in_quotes = False
+            quote_char = ""
+            for char in input_text:
+                if char in ("'", '"'):
+                    if not in_quotes:
+                        in_quotes = True
+                        quote_char = char
+                    elif char == quote_char:
+                        in_quotes = False
+                        quote_char = ""
+                    current_word += char
+                elif char == ' ' and not in_quotes:
+                    words.append(current_word)
+                    current_word = ""
+                else:
+                    current_word += char
+            words.append(current_word)
+            last_word = words[-1] if words else ""
+        except:
+            last_word = input_text.split()[-1] if input_text.split() else ""
+
+        # Remove quotes for searching
+        search_term = last_word.strip('"').strip("'")
+        
+        # Determine base directory and prefix
+        base_dir = getattr(self, 'current_terminal_dir', os.getcwd())
+        
+        if os.path.isabs(search_term):
+            search_dir = os.path.dirname(search_term)
+            prefix = os.path.basename(search_term)
+            user_dir = search_dir
+        else:
+            search_dir = os.path.dirname(os.path.join(base_dir, search_term))
+            prefix = os.path.basename(search_term)
+            user_dir = os.path.dirname(search_term)
+            
+        if not search_dir:
+            search_dir = base_dir
+            
+        if not os.path.exists(search_dir):
+            return
+            
+        # Find matches
+        try:
+            matches = []
+            for item in os.listdir(search_dir):
+                if item.lower().startswith(prefix.lower()):
+                    # Reconstruct the path relative to what user typed
+                    if user_dir:
+                        match_path = os.path.join(user_dir, item)
+                    else:
+                        match_path = item
+                        
+                    # Add trailing slash for directories
+                    full_path = os.path.join(search_dir, item)
+                    if os.path.isdir(full_path):
+                        matches.append(match_path + "\\")
+                    else:
+                        matches.append(match_path)
+            
+            if matches:
+                # Calculate positions to replace the word
+                # the start_pos is current absolute position minus length of last_word
+                end_pos = self.terminal_edit.textCursor().position()
+                start_pos = end_pos - len(last_word)
+                
+                # Replace with first match
+                match = matches[0]
+                if ' ' in match: match = f'"{match}"'
+                
+                cursor = self.terminal_edit.textCursor()
+                cursor.setPosition(start_pos)
+                cursor.setPosition(end_pos, QTextCursor.KeepAnchor)
+                cursor.insertText(match)
+                
+                # Save state for consecutive tabs
+                self._tab_completion_state = {
+                    'start_pos': start_pos,
+                    'end_pos': start_pos + len(match),
+                    'matches': matches,
+                    'index': 0
+                }
+        except Exception as e:
+            pass
 
     # =====================================================================
     # EXECUTION SECTION: COMPILER INTERFACE
@@ -503,8 +644,8 @@ class TerminalManager(QTabWidget):
         if not source_code:
             return
 
-        from Analizador_Sintactico.analizador_sintactico import Parser
-        from Analizador_Sintactico.ASTNode import ParserSignals
+        from compiler.syntax_analyzer.analizador_sintactico import Parser
+        from compiler.syntax_analyzer.ASTNode import ParserSignals
         
         # Initialize memory storage for AST Visualization
         self.current_ast = None
@@ -602,7 +743,7 @@ class TerminalManager(QTabWidget):
             item.setText(1, "No AST found. Please run Syntax Analysis first.")
             return
 
-        from Analizador_Semantico.semantic_analyzer import SemanticAnalyzer
+        from compiler.semantic_analyzer.semantic_analyzer import SemanticAnalyzer
         analyzer = SemanticAnalyzer()
         
         annotated_ast, errors = analyzer.analyze(self.current_ast)

@@ -1,4 +1,4 @@
-from Analizador_Semantico.symbol_table import SymbolTable
+from compiler.semantic_analyzer.symbol_table import SymbolTable
 import copy
 
 class SemanticAnalyzer:

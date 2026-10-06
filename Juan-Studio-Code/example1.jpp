@@ -1,24 +1,26 @@
 main {
-  float x = 10, y;
-  int a = 11, b;
-  
-  cin >> x;
-  cin >> y;
-
-  if(x > y) {
-     bool flag = true;
-     if(flag) {
-        cout << "Hola";
-     }
-
-     do{
-	cout << y;
-     }while(x > y);
-
-     y = 11*14.6/16.5^2*(2+5);
-     float z = y * 4;
-  }
-  
-
-
+    float x = 10, y;
+    int a = 11, b;
+    
+    cin >> x;
+    cin >> y;
+    
+    if(x > y) {
+        bool flag = true;
+        if(flag) {
+            cout << "Hola";
+        }
+        
+        do{
+            cout << y;
+        }while(x > y);
+        
+        y = 11*14.6/16.5^2*(2+5);
+        float z = y * 4;
+    }
+    
+    while(a < 7){
+        cout << "Hi";
+    }
+    
 }

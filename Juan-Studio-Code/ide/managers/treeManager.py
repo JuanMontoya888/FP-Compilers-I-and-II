@@ -16,16 +16,17 @@ from PySide6.QtCore import QModelIndex, QFileInfo, QObject, Signal
 
 class CustomIconProvider(QFileIconProvider):
     def icon(self, arg):
-        base_dir = os.path.dirname(os.path.abspath(__file__))
+        # We need to point to the root directory, which is one level up from managers
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         if isinstance(arg, QFileInfo):
             if arg.isDir():
-                return QIcon(os.path.join(base_dir, "icons", "new_folder.svg"))
+                return QIcon(os.path.join(root_dir, "icons", "new_folder.svg"))
             else:
-                return QIcon(os.path.join(base_dir, "icons", "open_file.svg"))
+                return QIcon(os.path.join(root_dir, "icons", "open_file.svg"))
         if arg == QFileIconProvider.Folder:
-            return QIcon(os.path.join(base_dir, "icons", "new_folder.svg"))
+            return QIcon(os.path.join(root_dir, "icons", "new_folder.svg"))
         elif arg == QFileIconProvider.File:
-            return QIcon(os.path.join(base_dir, "icons", "open_file.svg"))
+            return QIcon(os.path.join(root_dir, "icons", "open_file.svg"))
         return super().icon(arg)
 
 class TreeManager(QObject):

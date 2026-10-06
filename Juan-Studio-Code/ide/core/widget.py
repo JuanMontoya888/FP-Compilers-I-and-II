@@ -6,12 +6,12 @@ from PySide6.QtWidgets import QApplication, QWidget, QSplitter
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon
 
-from ui_form import Ui_Widget
-from treeManager import TreeManager
-from codeEditorManager import CodeEditorManager
-from shortcuts import Shortcuts
-from terminalManager import TerminalManager
-from components.context_menu import ExplorerContextMenuManager
+from ide.core.ui_form import Ui_Widget
+from ide.managers.treeManager import TreeManager
+from ide.managers.codeEditorManager import CodeEditorManager
+from ide.core.shortcuts import Shortcuts
+from ide.managers.terminalManager import TerminalManager
+from ide.components.context_menu import ExplorerContextMenuManager
 
 # =====================================================================
 # MAIN ARCHITECTURE: Widget Class (IDE Orchestrator)
@@ -43,7 +43,13 @@ class Widget(QWidget):
         self.ui.setupUi(self)
         
         self.setWindowTitle("Juan Studio Code")
-        icon_path = os.path.join(os.path.dirname(__file__), "logoJSC.svg")
+        
+        # Determine the root directory of the project
+        self.root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.resources_dir = os.path.join(self.root_dir, "resources")
+        self.icons_dir = os.path.join(self.root_dir, "icons")
+        
+        icon_path = os.path.join(self.resources_dir, "logoJSC.svg")
         self.setWindowIcon(QIcon(icon_path))
 
         # Global state tracking for the current workspace
@@ -52,7 +58,7 @@ class Widget(QWidget):
 
         # Load external stylesheet
         try:
-            with open(os.path.join(os.path.dirname(__file__), 'style.qss'), 'r', encoding='utf-8') as f:
+            with open(os.path.join(self.resources_dir, 'style.qss'), 'r', encoding='utf-8') as f:
                 self.setStyleSheet(self.styleSheet() + "\n" + f.read())
         except Exception as e:
             print(f"Warning: Could not load style.qss - {e}")
@@ -75,39 +81,37 @@ class Widget(QWidget):
         """
         Locates SVG resources and maps them to the sidebar buttons.
         """
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        icons_dir = os.path.join(base_dir, "icons")
         icon_size = QSize(24, 24)
 
         # Mapping SVG assets to specific toolbar functionality
-        self.ui.lexicoButton.setIcon(QIcon(os.path.join(icons_dir, "lexico.svg")))
+        self.ui.lexicoButton.setIcon(QIcon(os.path.join(self.icons_dir, "lexico.svg")))
         self.ui.lexicoButton.setIconSize(icon_size)
 
-        self.ui.sintacticoButton.setIcon(QIcon(os.path.join(icons_dir, "sintactico.svg")))
+        self.ui.sintacticoButton.setIcon(QIcon(os.path.join(self.icons_dir, "sintactico.svg")))
         self.ui.sintacticoButton.setIconSize(icon_size)
 
-        self.ui.semanticoButton.setIcon(QIcon(os.path.join(icons_dir, "semantico.svg")))
+        self.ui.semanticoButton.setIcon(QIcon(os.path.join(self.icons_dir, "semantico.svg")))
         self.ui.semanticoButton.setIconSize(icon_size)
 
-        self.ui.codIntButton.setIcon(QIcon(os.path.join(icons_dir, "intermedio.svg")))
+        self.ui.codIntButton.setIcon(QIcon(os.path.join(self.icons_dir, "intermedio.svg")))
         self.ui.codIntButton.setIconSize(icon_size)
 
-        self.ui.runButton_.setIcon(QIcon(os.path.join(icons_dir, "play.svg")))
+        self.ui.runButton_.setIcon(QIcon(os.path.join(self.icons_dir, "play.svg")))
         self.ui.runButton_.setIconSize(icon_size)
 
-        self.ui.errorButton.setIcon(QIcon(os.path.join(icons_dir, "bug.svg")))
+        self.ui.errorButton.setIcon(QIcon(os.path.join(self.icons_dir, "bug.svg")))
         self.ui.errorButton.setIconSize(icon_size)
 
-        self.ui.tablaSimbolosButton.setIcon(QIcon(os.path.join(icons_dir, "table.svg")))
+        self.ui.tablaSimbolosButton.setIcon(QIcon(os.path.join(self.icons_dir, "table.svg")))
         self.ui.tablaSimbolosButton.setIconSize(icon_size)
 
-        self.ui.saveAsFileButton.setIcon(QIcon(os.path.join(icons_dir, "save_as.svg")))
+        self.ui.saveAsFileButton.setIcon(QIcon(os.path.join(self.icons_dir, "save_as.svg")))
         self.ui.saveAsFileButton.setIconSize(icon_size)
 
-        self.ui.saveFileButton.setIcon(QIcon(os.path.join(icons_dir, "save.svg")))
+        self.ui.saveFileButton.setIcon(QIcon(os.path.join(self.icons_dir, "save.svg")))
         self.ui.saveFileButton.setIconSize(icon_size)
 
-        self.ui.newDirectoryButton.setIcon(QIcon(os.path.join(icons_dir, "new_folder.svg")))
+        self.ui.newDirectoryButton.setIcon(QIcon(os.path.join(self.icons_dir, "new_folder.svg")))
         self.ui.newDirectoryButton.setIconSize(icon_size)
 
         # Accessibility: Defining tooltips for the button interface
@@ -215,12 +219,13 @@ class Widget(QWidget):
         
         # Inject the background logo watermark for the empty workspace
         current_style = self.styleSheet()
-        self.setStyleSheet(current_style + """
-            QTabWidget#tabWidget::pane {
-                background-image: url(logoJSC.svg);
+        bg_image_path = os.path.join(self.resources_dir, 'logoJSC.svg').replace('\\', '/')
+        self.setStyleSheet(current_style + f"""
+            QTabWidget#tabWidget::pane {{
+                background-image: url({bg_image_path});
                 background-position: center;
                 background-repeat: no-repeat;
-            }
+            }}
         """)
 
 

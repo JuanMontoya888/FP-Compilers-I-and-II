@@ -1,6 +1,6 @@
 from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QFont, QColor
 from PySide6.QtCore import QRegularExpression
-from components.theme import Theme
+from ide.components.theme import Theme
 
 # =====================================================================
 # CLASS: Highlighter (SYNTAX HIGHLIGHTING ENGINE)

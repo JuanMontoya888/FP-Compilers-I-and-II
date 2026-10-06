@@ -6,8 +6,9 @@ from PySide6.QtGui import QPainter, QColor, QTextFormat
 from PySide6.QtGui import QTextCharFormat, QFont, QTextCursor, QTextDocument
 from PySide6.QtCore import QRegularExpression
 
-from components.theme import Theme
-from components.highlighter import Highlighter
+from ide.components.theme import Theme
+from ide.components.highlighter import Highlighter
+from ide.components.search_replace import SearchReplaceWidget
 
 # ============================================================
 # ARCHITECTURE: GRAPHICAL EDITOR ENGINE
@@ -141,6 +142,10 @@ class CodeEditor(QPlainTextEdit):
         super().resizeEvent(event)
         cr = self.contentsRect()
         self.line_number_area.setGeometry(QRect(cr.left(), cr.top(), self.line_number_area_width(), cr.height()))
+        
+        # Reposition the floating search widget if it's visible
+        if hasattr(self, 'search_replace_widget') and self.search_replace_widget.isVisible():
+            self.search_replace_widget.update_position()
 
     # ============================================================
     # METHOD: highlight_current_line
@@ -263,6 +268,103 @@ class CodeEditor(QPlainTextEdit):
             block_number += 1
 
     # ============================================================
+    # METHOD: keyPressEvent
+    # What it does: Handles auto-indentation on Enter and block
+    # indent/unindent on Tab/Shift+Tab.
+    # ============================================================
+    def keyPressEvent(self, event):
+        cursor = self.textCursor()
+        
+        # Handle Shift+Tab (Unindent)
+        if event.key() == Qt.Key_Backtab:
+            cursor.beginEditBlock()
+            if cursor.hasSelection():
+                start_pos = cursor.selectionStart()
+                end_pos = cursor.selectionEnd()
+                cursor.setPosition(start_pos)
+                start_block = cursor.blockNumber()
+                cursor.setPosition(end_pos)
+                end_block = cursor.blockNumber()
+                if cursor.positionInBlock() == 0 and end_block > start_block:
+                    end_block -= 1
+                
+                for i in range(start_block, end_block + 1):
+                    cursor.setPosition(self.document().findBlockByNumber(i).position())
+                    cursor.movePosition(QTextCursor.StartOfBlock)
+                    line_text = cursor.block().text()
+                    if line_text.startswith("    "):
+                        cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 4)
+                        cursor.removeSelectedText()
+                    elif line_text.startswith("\t"):
+                        cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 1)
+                        cursor.removeSelectedText()
+            else:
+                cursor.movePosition(QTextCursor.StartOfBlock)
+                line_text = cursor.block().text()
+                if line_text.startswith("    "):
+                    cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 4)
+                    cursor.removeSelectedText()
+                elif line_text.startswith("\t"):
+                    cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 1)
+                    cursor.removeSelectedText()
+            cursor.endEditBlock()
+            return
+
+        # Handle Tab (Indent)
+        elif event.key() == Qt.Key_Tab:
+            if cursor.hasSelection():
+                cursor.beginEditBlock()
+                start_pos = cursor.selectionStart()
+                end_pos = cursor.selectionEnd()
+                
+                cursor.setPosition(start_pos)
+                start_block = cursor.blockNumber()
+                
+                cursor.setPosition(end_pos)
+                end_block = cursor.blockNumber()
+                
+                # If selection ends exactly at the start of a line, don't indent that last line
+                if cursor.positionInBlock() == 0 and end_block > start_block:
+                    end_block -= 1
+
+                for i in range(start_block, end_block + 1):
+                    cursor.setPosition(self.document().findBlockByNumber(i).position())
+                    cursor.movePosition(QTextCursor.StartOfBlock)
+                    cursor.insertText("    ")
+                
+                cursor.endEditBlock()
+                return
+            else:
+                cursor.insertText("    ")
+                return
+
+        # Handle Return (Auto-indent)
+        elif event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+            super().keyPressEvent(event)
+            current_block = cursor.block()
+            prev_block = current_block.previous()
+            
+            if prev_block.isValid():
+                prev_text = prev_block.text()
+                # Find indentation of previous line
+                indent = ""
+                for char in prev_text:
+                    if char in (' ', '\t'):
+                        indent += char
+                    else:
+                        break
+                
+                # If previous line ends with '{', increase indent
+                if prev_text.strip().endswith('{'):
+                    indent += "    "
+                    
+                if indent:
+                    cursor.insertText(indent)
+            return
+
+        super().keyPressEvent(event)
+
+    # ============================================================
     # METHOD: contextMenuEvent
     # What it does: Overrides the standard right-click context menu.
     # ============================================================
@@ -270,13 +372,13 @@ class CodeEditor(QPlainTextEdit):
         menu = self.createStandardContextMenu()
         menu.addSeparator()
 
-        action_format = menu.addAction("Format Document")
+        action_format = menu.addAction("Format Document\tShift+Alt+F")
         action_format.triggered.connect(self.format_document)
 
-        action_find = menu.addAction("Find...")
+        action_find = menu.addAction("Find...\tCtrl+F")
         action_find.triggered.connect(self.show_find_dialog)
 
-        action_replace = menu.addAction("Replace...")
+        action_replace = menu.addAction("Replace...\tCtrl+H")
         action_replace.triggered.connect(self.show_replace_dialog)
 
         menu.exec_(event.globalPos())
@@ -316,47 +418,20 @@ class CodeEditor(QPlainTextEdit):
 
     # ============================================================
     # METHOD: show_find_dialog
-    # What it does: Basic find operation traversing the document.
+    # What it does: Shows the inline search widget
     # ============================================================
     def show_find_dialog(self):
-        search_text, ok = QInputDialog.getText(
-            self, "Find", "Enter text to find:"
-        )
-        if ok and search_text:
-            cursor = self.document().find(search_text, self.textCursor())
-            if not cursor.isNull():
-                self.setTextCursor(cursor)
-            else:
-                # If not found downwards, try searching from the start
-                cursor = self.document().find(search_text, 0)
-                if not cursor.isNull():
-                    self.setTextCursor(cursor)
-                else:
-                    QMessageBox.information(self, "Find", f"Cannot find '{search_text}'.")
+        # Notify the widget to show itself
+        if hasattr(self, 'search_replace_widget'):
+            self.search_replace_widget.show_find()
 
     # ============================================================
     # METHOD: show_replace_dialog
-    # What it does: Basic replace operation.
+    # What it does: Shows the inline replace widget
     # ============================================================
     def show_replace_dialog(self):
-        search_text, ok_find = QInputDialog.getText(
-            self, "Replace", "Enter text to find:"
-        )
-        if not (ok_find and search_text):
-            return
-            
-        replace_text, ok_replace = QInputDialog.getText(
-            self, "Replace", f"Replace '{search_text}' with:"
-        )
-        if not ok_replace:
-            return
-            
-        cursor = self.document().find(search_text, self.textCursor())
-        if not cursor.isNull():
-            cursor.insertText(replace_text)
-            self.setTextCursor(cursor)
-        else:
-            QMessageBox.information(self, "Replace", f"Cannot find '{search_text}'.")
+        if hasattr(self, 'search_replace_widget'):
+            self.search_replace_widget.show_replace()
 
 
 # =====================================================================
@@ -381,8 +456,13 @@ class CodePage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self.editor = CodeEditor()
+        # Editor setup
+        self.editor = CodeEditor(self)
         self.editor.setPlainText(content)
+        
+        # Search/Replace widget (floating overlay, parent is editor)
+        self.editor.search_replace_widget = SearchReplaceWidget(self.editor, self.editor)
+        
         layout.addWidget(self.editor)
 
         # Attach syntax highligher to this specific document
