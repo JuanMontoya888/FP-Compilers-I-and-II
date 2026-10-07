@@ -1,0 +1,8 @@
+VARIABLE       	TYPE      	OFFSET  	LINES
+-------------------------------------------------------
+x              	float     	0       	2, 5, 8, 16
+y              	float     	8       	2, 6, 8, 15, 16, 18, 19
+a              	int       	16      	3, 22
+b              	int       	20      	3
+flag           	bool      	24      	9, 10
+z              	float     	25      	19

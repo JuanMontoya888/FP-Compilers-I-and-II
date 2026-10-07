@@ -171,7 +171,7 @@ class Parser:
     # METHOD: serialize_ast
     # What it does: Recursively converts the AST into a formatted text string and saves it.
     # What components it uses: ASTNode.
-    # How it interacts: Writes the final structured output to compiler_output/tree.txt.
+    # How it interacts: Writes the final structured output to compiler_output/syntactic_tree.txt.
     # =====================================================================
     def serialize_ast(self, node, level=0):
         import os
@@ -181,7 +181,7 @@ class Parser:
             output_dir = "compiler_output"
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
-            with open(os.path.join(output_dir, "tree.txt"), "w", encoding='utf-8') as f:
+            with open(os.path.join(output_dir, "syntactic_tree.txt"), "w", encoding='utf-8') as f:
                 f.write(self._build_ast_string(node, 0))
                 
     def _build_ast_string(self, node, level):

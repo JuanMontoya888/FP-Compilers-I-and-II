@@ -36,8 +36,36 @@ class SemanticAnalyzer:
         self.errors = []
         
         self._traverse(self.annotated_ast)
+        self.export_results()
         
         return self.annotated_ast, self.errors
+
+    def export_results(self):
+        import os
+        output_dir = "compiler_output"
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            
+        # Export Semantic Tree
+        with open(os.path.join(output_dir, "semantic_tree.txt"), "w", encoding='utf-8') as f:
+            f.write(self._build_ast_string(self.annotated_ast, 0))
+            
+        # Export Symbol Table
+        with open(os.path.join(output_dir, "symbol_table.txt"), "w", encoding='utf-8') as f:
+            f.write(f"{'VARIABLE':<15}\t{'TYPE':<10}\t{'OFFSET':<8}\tLINES\n")
+            f.write("-" * 55 + "\n")
+            for sym in self.sym_table.all_symbols:
+                lines_str = ", ".join(map(str, sym.lines))
+                f.write(f"{sym.name:<15}\t{sym.dtype:<10}\t{sym.offset:<8}\t{lines_str}\n")
+
+    def _build_ast_string(self, node, level):
+        if not node:
+            return ""
+        indent = "  " * level
+        result = f"{indent}|-- {node.name.replace(chr(10), ' ')}: {node.value} (Ln {getattr(node, 'line', '')}, Col {getattr(node, 'col', '')})\n"
+        for child in node.children:
+            result += self._build_ast_string(child, level + 1)
+        return result
 
     def _traverse(self, node):
         if not node: return
