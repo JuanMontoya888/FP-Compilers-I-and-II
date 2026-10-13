@@ -1,9 +1,10 @@
 class Symbol:
-    def __init__(self, name, dtype, offset, line):
+    def __init__(self, name, dtype, offset, line, value=None):
         self.name = name
         self.dtype = dtype
         self.offset = offset
         self.lines = [line]
+        self.value = value
 
     def add_line(self, line):
         if line not in self.lines:
@@ -31,7 +32,7 @@ class SymbolTable:
     # In the TINY compiler, this was typically handled by st_insert() in symtab.c.
     # It stores the variable's attributes and memory location (offset).
     # =========================================================================
-    def insert(self, name, dtype, line):
+    def insert(self, name, dtype, line, value=None):
         current_scope = self.scopes[-1]
         if name in current_scope:
             return False # Duplicate identifier in the same scope
@@ -41,7 +42,7 @@ class SymbolTable:
         if dtype == "float": size = 8
         elif dtype == "bool": size = 1
 
-        sym = Symbol(name, dtype, self.current_offset, line)
+        sym = Symbol(name, dtype, self.current_offset, line, value)
         current_scope[name] = sym
         self.all_symbols.append(sym)
         self.current_offset += size

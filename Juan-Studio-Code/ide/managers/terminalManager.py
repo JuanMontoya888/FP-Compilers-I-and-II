@@ -98,7 +98,7 @@ class TerminalManager(QTabWidget):
         self.addTab(self.codigo_intermedio, "Intermediate Code")
 
         self.tabla = QTreeWidget()
-        self.tabla.setHeaderLabels(["Name/Lexema", "Data Type", "Memory Offset", "Lines Referenced"])
+        self.tabla.setHeaderLabels(["Name/Lexema", "Data Type", "Value", "Memory Offset", "Lines Referenced"])
         self.tabla.setAlternatingRowColors(True)
         self.setup_analysis_tab(self.tabla, "Symbol Table...\n")
         self.addTab(self.tabla, "Symbol Table")
@@ -118,7 +118,7 @@ class TerminalManager(QTabWidget):
         self.corner_layout.setContentsMargins(0, 0, 0, 0)
         self.corner_layout.setSpacing(5)
 
-        self.btn_visualize_ast = QPushButton("Visualize Graphical AST")
+        self.btn_visualize_ast = QPushButton("Visualizar AST (Qt)")
         self.btn_visualize_ast.setCursor(Qt.PointingHandCursor)
         self.btn_visualize_ast.setStyleSheet("""
             QPushButton {
@@ -128,6 +128,17 @@ class TerminalManager(QTabWidget):
         """)
         self.btn_visualize_ast.clicked.connect(self.show_ast_visualization)
         self.btn_visualize_ast.setVisible(False)  # Hidden by default
+
+        self.btn_browser_ast = QPushButton("Abrir AST (Navegador)")
+        self.btn_browser_ast.setCursor(Qt.PointingHandCursor)
+        self.btn_browser_ast.setStyleSheet("""
+            QPushButton {
+                background-color: #1b3a4b; color: #4ec9b0; border: 1px solid #2a5a73; padding: 2px 10px; border-radius: 2px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: #24526b; color: #ffffff; }
+        """)
+        self.btn_browser_ast.clicked.connect(self.show_html_ast_visualization)
+        self.btn_browser_ast.setVisible(False)
 
         self.btn_copy_terminal = QPushButton("Copy Result")
         self.btn_copy_terminal.setCursor(Qt.PointingHandCursor)
@@ -140,15 +151,17 @@ class TerminalManager(QTabWidget):
         self.btn_copy_terminal.clicked.connect(self.copy_current_tab)
 
         self.corner_layout.addWidget(self.btn_visualize_ast)
+        self.corner_layout.addWidget(self.btn_browser_ast)
         self.corner_layout.addWidget(self.btn_copy_terminal)
 
         self.setCornerWidget(self.corner_container, Qt.TopRightCorner)
         self.currentChanged.connect(self._on_tab_changed)
 
     def _on_tab_changed(self, index):
-        # Show AST Visualization button when Syntax Analysis or Semantic Analysis is the active tab
+        # Show AST Visualization buttons when Syntax Analysis or Semantic Analysis is the active tab
         is_ast_tab = (self.widget(index) == self.sintactico_output or self.widget(index) == self.semantico_output)
         self.btn_visualize_ast.setVisible(is_ast_tab)
+        self.btn_browser_ast.setVisible(is_ast_tab)
         
         if self.widget(index) == self.errores:
             self.stop_error_blink()
@@ -274,6 +287,28 @@ class TerminalManager(QTabWidget):
             QMessageBox.critical(self, "Module Error", f"Could not load visualization module: {e}")
         except Exception as e:
             QMessageBox.critical(self, "Visualization Error", f"Error launching AST visualizer: {e}")
+
+    def show_html_ast_visualization(self):
+        from PySide6.QtWidgets import QMessageBox
+        from ide.components.html_tree_visualizer import open_ast_in_browser
+
+        is_semantic_tab = (self.currentWidget() == self.semantico_output)
+        target_ast = getattr(self, 'current_semantic_ast', None) if is_semantic_tab else getattr(self, 'current_ast', None)
+        target_errors = getattr(self, 'current_semantic_errors', []) if is_semantic_tab else getattr(self, 'current_syntax_errors', [])
+        title = "Semantic AST Visualization" if is_semantic_tab else "Syntactic AST Visualization"
+
+        if not target_ast:
+            target_ast = getattr(self, 'current_semantic_ast', None) or getattr(self, 'current_ast', None)
+            target_errors = getattr(self, 'current_semantic_errors', []) or getattr(self, 'current_syntax_errors', [])
+
+        if not target_ast:
+            QMessageBox.warning(self, "No AST Available", "AST tree not found in memory. Please run the analysis first.")
+            return
+
+        try:
+            open_ast_in_browser(target_ast, target_errors, title)
+        except Exception as e:
+            QMessageBox.critical(self, "Browser Visualization Error", f"Error opening HTML visualizer: {e}")
 
     # =====================================================================
     # UTILITY METHOD: setup_analysis_tab
@@ -472,8 +507,14 @@ class TerminalManager(QTabWidget):
         # Remove quotes for searching
         search_term = last_word.strip('"').strip("'")
         
-        # Determine base directory and prefix
-        base_dir = getattr(self, 'current_terminal_dir', os.getcwd())
+        # Determine base directory and prefix from the prompt
+        prompt_cursor = self.terminal_edit.textCursor()
+        prompt_cursor.setPosition(self.interactive_position)
+        prompt_cursor.movePosition(QTextCursor.StartOfLine, QTextCursor.KeepAnchor)
+        prompt_text = prompt_cursor.selectedText()
+        import re
+        match_prompt = re.search(r'PS (([a-zA-Z]:)?[^>]+)>', prompt_text)
+        base_dir = match_prompt.group(1).strip() if match_prompt else getattr(self, 'current_terminal_dir', os.getcwd())
         
         if os.path.isabs(search_term):
             search_dir = os.path.dirname(search_term)
@@ -499,7 +540,7 @@ class TerminalManager(QTabWidget):
                     if user_dir:
                         match_path = os.path.join(user_dir, item)
                     else:
-                        match_path = item
+                        match_path = ".\\" + item
                         
                     # Add trailing slash for directories
                     full_path = os.path.join(search_dir, item)
@@ -642,6 +683,9 @@ class TerminalManager(QTabWidget):
             editor.clear_error_highlights()
 
         if not source_code:
+            item = QTreeWidgetItem(self.sintactico_output)
+            item.setText(0, "ERROR")
+            item.setText(1, "No file selected. Open or save a file first.")
             return
 
         from compiler.syntax_analyzer.analizador_sintactico import Parser
@@ -723,6 +767,11 @@ class TerminalManager(QTabWidget):
 
         self.sintactico_output.setHeaderLabels(["Syntax Node", "Value / Code", "Line/Column"])
         renderizar_ast_en_ui(self, ast_root, self.sintactico_output)
+        try:
+            from ide.components.html_tree_visualizer import export_ast_to_html
+            export_ast_to_html(ast_root, self.current_syntax_errors, "Syntactic AST Visualization")
+        except Exception:
+            pass
 
     def execute_semantic(self, source_code):
         """Processes code and updates the Semantic tab."""
@@ -737,7 +786,19 @@ class TerminalManager(QTabWidget):
             editor.clear_error_highlights()
             
         if not hasattr(self, 'current_ast') or not self.current_ast:
+            if source_code:
+                try:
+                    from compiler.syntax_analyzer.analizador_sintactico import Parser
+                    from compiler.syntax_analyzer.ASTNode import ParserSignals
+                    scanner = SCANNER(source_code)
+                    scanner.get_token()
+                    signals = ParserSignals()
+                    parser = Parser(scanner.list_tokens, signals=signals)
+                    self.current_ast = parser.parse()
+                except Exception:
+                    pass
 
+        if not hasattr(self, 'current_ast') or not self.current_ast:
             item = QTreeWidgetItem(self.semantico_output)
             item.setText(0, "ERROR")
             item.setText(1, "No AST found. Please run Syntax Analysis first.")
@@ -800,6 +861,13 @@ class TerminalManager(QTabWidget):
         else:
             self.semantico_output.setPlainText("Semantic Phase completed successfully.\nCheck Errors tab for details.")
             
+        # Export HTML view
+        try:
+            from ide.components.html_tree_visualizer import export_ast_to_html
+            export_ast_to_html(annotated_ast, self.current_semantic_errors, "Semantic AST Visualization")
+        except Exception:
+            pass
+
         # 4. Populate Symbol Table Tab
         if isinstance(self.tabla, QTreeWidget):
             self.tabla.clear()
@@ -807,13 +875,15 @@ class TerminalManager(QTabWidget):
                 item = QTreeWidgetItem(self.tabla)
                 item.setText(0, sym.name)
                 item.setText(1, sym.dtype)
-                item.setText(2, str(sym.offset))
-                item.setText(3, ", ".join(map(str, sym.lines)))
+                item.setText(2, str(sym.value) if getattr(sym, 'value', None) is not None else "-")
+                item.setText(3, str(sym.offset))
+                item.setText(4, ", ".join(map(str, sym.lines)))
         else:
-            table_text = "Name | Type | Offset | Lines\n"
-            table_text += "-"*40 + "\n"
+            table_text = "Name | Type | Value | Offset | Lines\n"
+            table_text += "-"*50 + "\n"
             for sym in analyzer.sym_table.all_symbols:
-                table_text += f"{sym.name} | {sym.dtype} | {sym.offset} | {', '.join(map(str, sym.lines))}\n"
+                val_str = str(sym.value) if getattr(sym, 'value', None) is not None else "-"
+                table_text += f"{sym.name} | {sym.dtype} | {val_str} | {sym.offset} | {', '.join(map(str, sym.lines))}\n"
             self.tabla.setPlainText(table_text)
 
     def execute_intermediate(self, source_code):
@@ -829,3 +899,119 @@ class TerminalManager(QTabWidget):
         # Simulated 3-address code or quadruples generation
         resultado_simulado = f"=== INTERMEDIATE CODE ===\nQuadruples generated for:\n{source_code}"
         self.codigo_intermedio.setPlainText(resultado_simulado)
+
+    def execute_silent_compilation(self, source_code_or_path, active_tab_index=3):
+        """
+        Runs compilation silently in the background:
+        - Does NOT show modals or change active tab or steal focus.
+        - Updates ASTs, errors, symbol table, and editor error highlights.
+        - Automatically exports results and updates ast_view.html.
+        """
+        if not source_code_or_path:
+            return
+
+        import os
+        editor = self.get_current_editor()
+        source_code = ""
+        file_path = ""
+        if os.path.exists(source_code_or_path):
+            file_path = source_code_or_path
+            try:
+                with open(file_path, 'r', encoding='latin-1') as f:
+                    source_code = f.read()
+            except Exception:
+                if editor:
+                    source_code = editor.toPlainText()
+        else:
+            source_code = source_code_or_path
+
+        if not source_code and editor:
+            source_code = editor.toPlainText()
+
+        if not source_code:
+            return
+
+        from compiler.lexical_analyzer.SCAN import SCANNER
+        from compiler.syntax_analyzer.analizador_sintactico import Parser
+        from compiler.syntax_analyzer.ASTNode import ParserSignals
+        from compiler.semantic_analyzer.semantic_analyzer import SemanticAnalyzer
+        from ide.components.html_tree_visualizer import export_ast_to_html
+        from PySide6.QtGui import QColor
+        from PySide6.QtWidgets import QTreeWidgetItem
+
+        try:
+            # 1. Lexical phase
+            scanner = SCANNER(file_path if file_path else source_code)
+            scanner.get_token()
+            self.current_tokens = scanner.list_tokens
+
+            all_errors = []
+            if hasattr(scanner, 'errores_lexicos') and scanner.errores_lexicos:
+                for err in scanner.errores_lexicos:
+                    msg = str(err.get('error', err))
+                    all_errors.append({"type": "Lexical", "msg": f"Lexical Error: {msg}", "line": err.get('linea', 1), "col": err.get('columna', 1)})
+
+            # 2. Syntactic phase
+            signals = ParserSignals()
+            syntax_errors = []
+            def silent_syntax_error(msg, line, col):
+                syntax_errors.append(f"Syntax Error: {msg} (Ln {line}, Col {col})")
+                all_errors.append({"type": "Syntax", "msg": f"Syntax Error: {msg}", "line": line, "col": col})
+            signals.error_ocurrido.connect(silent_syntax_error)
+
+            parser = Parser(scanner.list_tokens, signals=signals)
+            ast_root = parser.parse()
+            self.current_ast = ast_root
+            self.current_syntax_errors = syntax_errors
+            try:
+                parser.serialize_ast(ast_root)
+            except Exception:
+                pass
+
+            # 3. Semantic phase
+            semantic_errors = []
+            if ast_root:
+                analyzer = SemanticAnalyzer()
+                annotated_ast, sem_errs = analyzer.analyze(ast_root)
+                self.current_semantic_ast = annotated_ast
+                for err in sem_errs:
+                    msg = f"Semantic Error: {err['msg']}"
+                    semantic_errors.append(f"{msg} (Ln {err['line']}, Col {err['col']})")
+                    all_errors.append({"type": "Semantic", "msg": msg, "line": err['line'], "col": err['col']})
+                self.current_semantic_errors = semantic_errors
+                
+                # Export HTML AST view silently
+                try:
+                    export_ast_to_html(annotated_ast, semantic_errors, "Semantic AST Visualization")
+                except Exception:
+                    pass
+
+                # Update symbol table tab data silently
+                if isinstance(self.tabla, QTreeWidget):
+                    self.tabla.clear()
+                    for sym in analyzer.sym_table.all_symbols:
+                        item = QTreeWidgetItem(self.tabla)
+                        item.setText(0, sym.name)
+                        item.setText(1, sym.dtype)
+                        item.setText(2, str(sym.value) if getattr(sym, 'value', None) is not None else "-")
+                        item.setText(3, str(sym.offset))
+                        item.setText(4, ", ".join(map(str, sym.lines)))
+
+            # 4. Update editor highlights and tooltips silently
+            if editor:
+                editor.clear_error_highlights()
+                for err in all_errors:
+                    editor.add_error_highlight(err['line'], err['col'], err['msg'])
+
+            # 5. Update Error list tab silently
+            self.errores.clear()
+            error_color = QColor("#ff5555")
+            for err in all_errors:
+                item = QTreeWidgetItem(self.errores)
+                item.setText(0, err['msg'])
+                item.setText(1, f"Ln {err['line']}, Col {err['col']}")
+                item.setForeground(0, error_color)
+                item.setForeground(1, error_color)
+
+        except Exception:
+            pass

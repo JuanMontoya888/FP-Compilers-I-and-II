@@ -403,7 +403,9 @@ class SCANNER():
         # EXPORT SECTION: Final Token Serialization
         # Writes the results to a structured text file for debugging.
         # =====================================================================
-        output_dir = "compiler_output"
+        curr_file_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(curr_file_dir))
+        output_dir = os.path.join(project_root, "compiler_output")
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
             

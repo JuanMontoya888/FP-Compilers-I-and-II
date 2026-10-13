@@ -178,7 +178,9 @@ class Parser:
         
         # Only initialize file and create directory on the root call
         if level == 0:
-            output_dir = "compiler_output"
+            curr_file_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(os.path.dirname(curr_file_dir))
+            output_dir = os.path.join(project_root, "compiler_output")
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
             with open(os.path.join(output_dir, "syntactic_tree.txt"), "w", encoding='utf-8') as f:
@@ -602,15 +604,16 @@ class Parser:
     # =====================================================================
     def asignacion(self):
         token = self.current_token()
-        node = ASTNode("Assignment", line=token.linea, col=token.columna)
-        self.emit_node("Assignment", "")
+        node = ASTNode("Assignment", "=", line=token.linea, col=token.columna)
+        self.emit_node("Assignment", "=")
         
         id_token = self.match(TokenType.ID)
         if not id_token: 
             node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error')
             return node
             
-        node.value = id_token.lexema
+        id_node = ASTNode("Identifier", id_token.lexema, line=id_token.linea, col=id_token.columna)
+        node.add_child(id_node)
         
         if not self.match(TokenType.ASSIGN): node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error'); return node
         

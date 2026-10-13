@@ -307,6 +307,16 @@ class Widget(QWidget):
         if not self.terminal_manager.isVisible():
             self.terminal_manager.show()
 
+    def trigger_silent_compilation(self, file_path):
+        """
+        Executes silent background compilation up to the current stage
+        without popping up dialogs, switching panels, or disturbing the user.
+        """
+        if not file_path or not os.path.exists(file_path):
+            return
+        active_tab = self.terminal_manager.currentIndex()
+        self.terminal_manager.execute_silent_compilation(file_path, active_tab)
+
 
 # =====================================================================
 # BLOCK: MAIN EXECUTION (APPLICATION ENTRY POINT)

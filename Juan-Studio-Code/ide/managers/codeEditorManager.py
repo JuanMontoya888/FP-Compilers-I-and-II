@@ -523,6 +523,13 @@ class CodeEditorManager:
         self.main_app = main_app
         self.tabs.currentChanged.connect(self.update_context_from_tab)
 
+        # Debounced autosave timer (2 seconds of typing inactivity)
+        from PySide6.QtCore import QTimer
+        self.autosave_timer = QTimer()
+        self.autosave_timer.setSingleShot(True)
+        self.autosave_timer.setInterval(2000)
+        self.autosave_timer.timeout.connect(self.autosave_current_page)
+
     # ============================================================
     # METHOD: update_context_from_tab
     # What it does: Updates global application paths when switching tabs.
@@ -562,6 +569,35 @@ class CodeEditorManager:
             title = self.tabs.tabText(index)
             if not title.endswith("*"):
                 self.tabs.setTabText(index, title + "*")
+        if hasattr(self, 'autosave_timer'):
+            self.autosave_timer.start(2000)
+
+    # ============================================================
+    # METHOD: autosave_current_page
+    # What it does: Silently writes buffer to disk and triggers compilation.
+    # ============================================================
+    def autosave_current_page(self):
+        current_index = self.tabs.currentIndex()
+        if current_index >= 0:
+            current_page = self.tabs.widget(current_index)
+            if hasattr(current_page, 'file_path') and current_page.file_path:
+                try:
+                    content = current_page.editor.toPlainText()
+                    with open(current_page.file_path, 'w', encoding='latin-1') as f:
+                        f.write(content)
+
+                    title = self.tabs.tabText(current_index)
+                    if title.endswith("*"):
+                        self.tabs.setTabText(current_index, title[:-1])
+
+                    self.main_app.current_path = os.path.dirname(current_page.file_path)
+                    self.main_app.current_file_selected = current_page.file_path
+
+                    # Silent compilation in background
+                    if hasattr(self.main_app, 'trigger_silent_compilation'):
+                        self.main_app.trigger_silent_compilation(current_page.file_path)
+                except Exception:
+                    pass
 
     # ============================================================
     # METHOD: close_page
@@ -613,6 +649,10 @@ class CodeEditorManager:
 
                     self.main_app.current_path = os.path.dirname(current_page.file_path)
                     self.main_app.current_file_selected = current_page.file_path
+
+                    # Trigger compilation after saving
+                    if hasattr(self.main_app, 'trigger_silent_compilation'):
+                        self.main_app.trigger_silent_compilation(current_page.file_path)
 
                     QMessageBox.information(self.tabs, "Success", "File saved successfully.")
                 except Exception as e:
