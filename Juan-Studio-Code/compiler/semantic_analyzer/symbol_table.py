@@ -7,8 +7,8 @@ class Symbol:
         self.value = value
 
     def add_line(self, line):
-        if line not in self.lines:
-            self.lines.append(line)
+        #if line not in self.lines:
+        self.lines.append(line)
 
 class SymbolTable:
     def __init__(self):
