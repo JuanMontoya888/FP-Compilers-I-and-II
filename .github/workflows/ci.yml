@@ -19,6 +19,10 @@ jobs:
     env:
       QT_QPA_PLATFORM: offscreen
 
+    defaults:
+      run:
+        working-directory: Juan-Studio-Code
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
