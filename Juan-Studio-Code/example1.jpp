@@ -1,26 +1,51 @@
 main {
-    float x = 10, y;
-    int a = 11, b;
+    int n;
+    cout << "--- PRUEBA DE ESTRES TM ---";
+    cout << "Ingresa un numero entero positivo (ej. 7):";
+    cin >> n;
     
-    cin >> x;
-    cin >> y;
-    
-    if(x > y) {
-        bool flag = true;
-        if(flag) {
-            cout << "Hola";
+    if (n > 1) {
+        int steps = 0;
+        int max_val = n;
+        
+        // 1. Prueba de ciclo while, modulo y if-else
+        while (n != 1) {
+            if (n % 2 == 0) {
+                n = n / 2;
+            } else {
+                n = (n * 3) + 1;
+            }
+            
+            if (n > max_val) {
+                max_val = n;
+            }
+            
+            steps++;
         }
         
-        do{
-            cout << y;
-        }while(x > y);
+        // 2. Prueba de Multiple Output (encadenamiento)
+        cout << "Alcanzo el 1 en pasos: " << steps;
+        cout << "Valor maximo alcanzado: " << max_val;
         
-        y = 11*14.6/16.5^2*(2+5);
-        float z = y * 4;
+        // 3. Prueba de do-while, potencias y unarios
+        int base = 2, exp = 5;
+        int calc = base ^ exp;
+        
+        cout << "Prueba de potencia 2^5: " << calc;
+        
+        do {
+            calc--;
+        } while (calc > 30);
+        
+        cout << "Deberia ser 30 despues del do-while: " << calc;
+        
+    } else {
+        // 4. Prueba de booleanos y cortocircuito logico (si aplica)
+        bool flag = true;
+        bool flag2 = false;
+        
+        if (flag && !flag2 || n == 0) {
+            cout << "Entrada invalida. Fin del programa.";
+        }
     }
-    
-    while(a < 7){
-        cout << "Hi";
-    }
-    
 }

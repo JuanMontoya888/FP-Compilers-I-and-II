@@ -475,8 +475,8 @@ class CodePage(QWidget):
         status_layout.setContentsMargins(15, 2, 15, 2)
 
         self.lbl_cursor = QLabel("Ln 1, Col 1")
-        self.lbl_encoding = QLabel("Latin-1")
-        self.lbl_language = QLabel("txt")
+        self.lbl_encoding = QLabel("UTF-8")
+        self.lbl_language = QLabel(".jpp")
 
         status_layout.addStretch()
         status_layout.addWidget(self.lbl_cursor)
@@ -489,6 +489,17 @@ class CodePage(QWidget):
 
         self.editor.cursorPositionChanged.connect(self.update_cursor_position)
         self.update_cursor_position()
+        self.update_file_metadata(self.file_path)
+
+    def update_file_metadata(self, file_path: str):
+        """Updates encoding and language indicator labels based on the active file extension."""
+        self.file_path = file_path
+        self.lbl_encoding.setText("UTF-8")
+        if not file_path:
+            self.lbl_language.setText(".jpp")
+            return
+        ext = os.path.splitext(file_path)[1].lower()
+        self.lbl_language.setText(ext if ext else ".jpp")
 
     # ============================================================
     # METHOD: update_cursor_position
@@ -583,7 +594,7 @@ class CodeEditorManager:
             if hasattr(current_page, 'file_path') and current_page.file_path:
                 try:
                     content = current_page.editor.toPlainText()
-                    with open(current_page.file_path, 'w', encoding='latin-1') as f:
+                    with open(current_page.file_path, 'w', encoding='utf-8') as f:
                         f.write(content)
 
                     title = self.tabs.tabText(current_index)
@@ -641,7 +652,7 @@ class CodeEditorManager:
             if current_page.file_path:
                 try:
                     content = current_page.editor.toPlainText()
-                    with open(current_page.file_path, 'w', encoding='latin-1') as f:
+                    with open(current_page.file_path, 'w', encoding='utf-8') as f:
                         f.write(content)
 
                     if title.endswith("*"):
@@ -683,10 +694,10 @@ class CodeEditorManager:
             if file_path:
                 try:
                     content = current_page.editor.toPlainText()
-                    with open(file_path, 'w', encoding='latin-1') as f:
+                    with open(file_path, 'w', encoding='utf-8') as f:
                         f.write(content)
 
-                    current_page.file_path = file_path
+                    current_page.update_file_metadata(file_path)
                     new_name = os.path.basename(file_path)
                     self.tabs.setTabText(current_index, new_name)
                     self.main_app.current_path = os.path.dirname(file_path)

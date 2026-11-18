@@ -1,0 +1,41 @@
+main {
+    int n;
+    cin >> n;
+
+    if (n > 1) {
+        int steps = 0;
+        int max_val = n;
+
+        while (n != 1) {
+            if (n % 2 == 0) {
+                n = n / 2;
+            } else {
+                n = (n * 3) + 1;
+            }
+
+            if (n > max_val) {
+                max_val = n;
+            }
+            steps++;
+        }
+
+        cout << steps;
+        cout << max_val;
+
+        int base = 2, exp = 5;
+        int calc = base ^ exp;
+        cout << calc;
+
+        do {
+            calc--;
+        } while (calc > 30);
+
+        cout << calc;
+    } else {
+        bool flag = true;
+        bool flag2 = false;
+        if (flag && !flag2 || n == 0) {
+            cout << 0;
+        }
+    }
+}

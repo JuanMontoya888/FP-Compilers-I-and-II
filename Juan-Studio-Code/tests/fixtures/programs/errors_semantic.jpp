@@ -1,0 +1,11 @@
+main {
+    int x = 10;
+    int x = 20;
+    y = 5;
+    x = 3.14;
+    if (x) {
+        cout << x;
+    }
+    x = 1 + true;
+    int bad = 42 @ 2;
+}

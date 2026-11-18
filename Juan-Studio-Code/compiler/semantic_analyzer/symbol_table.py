@@ -1,8 +1,9 @@
 class Symbol:
-    def __init__(self, name, dtype, offset, line, value=None):
+    def __init__(self, name, dtype, offset, line, value=None, tm_offset=0):
         self.name = name
         self.dtype = dtype
         self.offset = offset
+        self.tm_offset = tm_offset
         self.lines = [line]
         self.value = value
 
@@ -15,6 +16,7 @@ class SymbolTable:
         # List of dictionaries for scoping. Index 0 is global scope.
         self.scopes = [{}]
         self.current_offset = 0
+        self.current_tm_offset = 0
         
         # Keep track of all symbols for final rendering (if needed)
         self.all_symbols = []
@@ -42,10 +44,11 @@ class SymbolTable:
         if dtype == "float": size = 8
         elif dtype == "bool": size = 1
 
-        sym = Symbol(name, dtype, self.current_offset, line, value)
+        sym = Symbol(name, dtype, self.current_offset, line, value, tm_offset=self.current_tm_offset)
         current_scope[name] = sym
         self.all_symbols.append(sym)
         self.current_offset += size
+        self.current_tm_offset += 1
         return True
 
     # =========================================================================

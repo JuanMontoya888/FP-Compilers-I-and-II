@@ -1,0 +1,24 @@
+[
+  {
+    "id": "ansi_green_and_reset",
+    "raw_b64": null,
+    "raw_text": "\u001b[32m> Ejecutando simulador TM...\u001b[0m\n",
+    "expected_text_contains": "> Ejecutando simulador TM...",
+    "expected_first_color": "#6a9955",
+    "expect_clear": false
+  },
+  {
+    "id": "ansi_red_bold_error",
+    "raw_text": "\u001b[1;31mERROR\u001b[0m",
+    "expected_text_contains": "ERROR",
+    "expected_first_color": "#f44747",
+    "expect_bold": true,
+    "expect_clear": false
+  },
+  {
+    "id": "ansi_clear_screen",
+    "raw_text": "before\u001b[2Jafter",
+    "expected_text_contains": "after",
+    "expect_clear": true
+  }
+]

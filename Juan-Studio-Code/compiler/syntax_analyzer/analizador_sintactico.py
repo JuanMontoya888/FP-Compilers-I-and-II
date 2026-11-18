@@ -365,7 +365,7 @@ class Parser:
         else:
             self.report_error("Invalid statement start")
             err_node = ASTNode("Syntax Error", "Invalid Statement", line=token.linea, col=token.columna)
-            err_node.has_error = True; node.error_message = getattr(self, 'last_error_message', 'Syntax Error')
+            err_node.has_error = True; err_node.error_message = getattr(self, 'last_error_message', 'Syntax Error')
             return err_node
 
     # =====================================================================

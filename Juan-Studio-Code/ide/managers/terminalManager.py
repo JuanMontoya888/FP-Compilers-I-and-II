@@ -1,59 +1,28 @@
-from PySide6.QtWidgets import QTabWidget, QPlainTextEdit, QTreeWidget, QTreeWidgetItem
-from PySide6.QtCore import QProcess, Qt, QThread, Signal
-from PySide6.QtGui import QTextCursor, QTextCharFormat, QColor
+from PySide6.QtWidgets import (
+    QTabWidget, QPlainTextEdit, QTreeWidget, QTreeWidgetItem,
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSplitter, QLabel,
+    QMessageBox, QApplication,
+)
+from PySide6.QtCore import QProcess, Qt, QTimer, Signal
+from PySide6.QtGui import QTextCursor, QColor, QFont
 import os, sys, re
+from typing import Optional
 
 # =====================================================================
 # BACKEND MODULE INTEGRATION
-# Imports the core compiler modules using proper Python package paths.
+# Uses the pure-Python CompilerPipeline and background CompilationWorker.
 # =====================================================================
-from compiler.lexical_analyzer.SCAN import SCANNER
-
-
-# =====================================================================
-# MULTI-THREADING COMPONENT: LexerWorker
-# This class implements a worker thread to execute the lexical scanner
-# in a separate CPU core.
-#
-# Responsibilities:
-# - Isolate heavy lexical analysis from the Main UI Thread.
-# - Prevent UI freezing/hanging during large file processing.
-# - Emit results via Qt Signals once the background task is complete.
-# =====================================================================
-class LexerWorker(QThread):
-    # Signal that sends the list of tokens and an error message: (tokens_list, error_message)
-    finished_signal = Signal(list, str)
-
-    def __init__(self, source_code):
-        super().__init__()
-        self.source_code = source_code
-
-    def run(self):
-        """This method executes automatically in the background."""
-        try:
-            # Instantiate and execute the scanner logic
-            scanner = SCANNER(self.source_code)
-            scanner.get_token()
-
-            # Emit successful result with the actual tokens list
-            self.finished_signal.emit(scanner.list_tokens, "")
-        except Exception as e:
-            # Catch unexpected exceptions and propagate the error message
-            self.finished_signal.emit([], str(e))
+from compiler.pipeline import CompilationResult, CompilerPipeline
+from ide.components.interactive_terminal import InteractiveTerminal
+from ide.core.compiler_worker import CompilationWorker
 
 
 # =====================================================================
 # UI COMPONENT: TerminalManager (OUTPUT SYSTEM & INTERACTIVE CONSOLE)
-# This class serves as the primary feedback component for the IDE.
-# It inherits from QTabWidget to organize compiler output into
-# distinct logical stages (Terminal, Lexical, Syntactic, etc.).
-#
-# Architecture:
-# - Implements a real interactive console via QProcess.
-# - Manages independent text buffers for each compilation phase.
-# - Acts as a Data Sink for backend analysis results.
 # =====================================================================
 class TerminalManager(QTabWidget):
+    diagnostics_updated = Signal(list)
+    compilation_completed = Signal(object, str, bool)
 
     # =====================================================================
     # METHOD: __init__
@@ -72,7 +41,7 @@ class TerminalManager(QTabWidget):
         self.setObjectName("bottomTabs")
 
         # Initialize the interactive system terminal
-        self.terminal_edit = QPlainTextEdit()
+        self.terminal_edit = InteractiveTerminal()
         self.setup_terminal()
         self.addTab(self.terminal_edit, "Terminal")
 
@@ -80,26 +49,86 @@ class TerminalManager(QTabWidget):
         self.lexico_output = QTreeWidget()
         self.lexico_output.setHeaderLabels(["Token Type", "Lexeme", "Line/Column"])
         self.lexico_output.setAlternatingRowColors(True)
+        self.lexico_output.setColumnWidth(0, 220)
+        self.lexico_output.setColumnWidth(1, 260)
         self.addTab(self.lexico_output, "Lexical Analysis")
 
         self.sintactico_output = QTreeWidget()
         self.sintactico_output.setHeaderLabels(["Syntax Node", "Value / Code", "Line/Column"])
         self.sintactico_output.setAlternatingRowColors(True)
+        self.sintactico_output.setColumnWidth(0, 260)
+        self.sintactico_output.setColumnWidth(1, 260)
         self.addTab(self.sintactico_output, "Syntax Analysis")
 
         self.semantico_output = QTreeWidget()
         self.semantico_output.setHeaderLabels(["Semantic Node", "Value / Code", "Line/Column"])
         self.semantico_output.setAlternatingRowColors(True)
+        self.semantico_output.setColumnWidth(0, 260)
+        self.semantico_output.setColumnWidth(1, 260)
         self.setup_analysis_tab(self.semantico_output, "Waiting for semantic analysis execution...\n")
         self.addTab(self.semantico_output, "Semantic Analysis")
 
-        self.codigo_intermedio = QPlainTextEdit()
-        self.setup_analysis_tab(self.codigo_intermedio, "Waiting for intermediate code execution...\n")
+        # Tab 4: Intermediate Code (side-by-side .tm and .ci viewers)
+        self.codigo_intermedio = QWidget()
+        intermedio_layout = QVBoxLayout(self.codigo_intermedio)
+        intermedio_layout.setContentsMargins(0, 0, 0, 0)
+        intermedio_layout.setSpacing(0)
+
+        self.intermediate_splitter = QSplitter(Qt.Horizontal)
+
+        mono_font = QFont("Consolas", 10)
+        mono_font.setStyleHint(QFont.Monospace)
+
+        tm_panel = QWidget()
+        tm_layout = QVBoxLayout(tm_panel)
+        tm_layout.setContentsMargins(0, 0, 0, 0)
+        tm_layout.setSpacing(0)
+        self.lbl_tm_header = QLabel("  Código Objeto TM (.tm)")
+        self.lbl_tm_header.setStyleSheet(
+            "background-color: #1b3a4b; color: #4ec9b0; font-weight: bold; "
+            "padding: 5px 8px; border-bottom: 1px solid #2a5a73;"
+        )
+        self.tm_code_edit = QPlainTextEdit()
+        self.tm_code_edit.setFont(mono_font)
+        self.tm_code_edit.setStyleSheet(
+            "QPlainTextEdit { background-color: #1e1e1e; color: #d4d4d4; border: none; }"
+        )
+        self.setup_analysis_tab(self.tm_code_edit, "Waiting for TM target code generation (.tm)...\n")
+        tm_layout.addWidget(self.lbl_tm_header)
+        tm_layout.addWidget(self.tm_code_edit)
+
+        ci_panel = QWidget()
+        ci_layout = QVBoxLayout(ci_panel)
+        ci_layout.setContentsMargins(0, 0, 0, 0)
+        ci_layout.setSpacing(0)
+        self.lbl_ci_header = QLabel("  Código Intermedio de Tres Direcciones (.ci)")
+        self.lbl_ci_header.setStyleSheet(
+            "background-color: #2d2d2d; color: #dcdcaa; font-weight: bold; "
+            "padding: 5px 8px; border-bottom: 1px solid #3c3c3c;"
+        )
+        self.ci_code_edit = QPlainTextEdit()
+        self.ci_code_edit.setFont(mono_font)
+        self.ci_code_edit.setStyleSheet(
+            "QPlainTextEdit { background-color: #1e1e1e; color: #d4d4d4; border: none; }"
+        )
+        self.setup_analysis_tab(self.ci_code_edit, "Waiting for three-address intermediate code generation (.ci)...\n")
+        ci_layout.addWidget(self.lbl_ci_header)
+        ci_layout.addWidget(self.ci_code_edit)
+
+        self.intermediate_splitter.addWidget(tm_panel)
+        self.intermediate_splitter.addWidget(ci_panel)
+        self.intermediate_splitter.setStretchFactor(0, 1)
+        self.intermediate_splitter.setStretchFactor(1, 1)
+        self.intermediate_splitter.setSizes([500, 500])
+
+        intermedio_layout.addWidget(self.intermediate_splitter)
         self.addTab(self.codigo_intermedio, "Intermediate Code")
 
         self.tabla = QTreeWidget()
         self.tabla.setHeaderLabels(["Name/Lexema", "Data Type", "Value", "Memory Offset", "Lines Referenced"])
         self.tabla.setAlternatingRowColors(True)
+        self.tabla.setColumnWidth(0, 180)
+        self.tabla.setColumnWidth(1, 120)
         self.setup_analysis_tab(self.tabla, "Symbol Table...\n")
         self.addTab(self.tabla, "Symbol Table")
 
@@ -107,12 +136,11 @@ class TerminalManager(QTabWidget):
         self.errores.setObjectName("errorTreeWidget")
         self.errores.setHeaderLabels(["Error Type / Description", "Position"])
         self.errores.setAlternatingRowColors(True)
+        self.errores.setColumnWidth(0, 520)
         self.addTab(self.errores, "Errors")
         self.errores.itemDoubleClicked.connect(self.jump_to_error_tree)
-        self.terminal_edit.keyPressEvent = self.terminal_keyPressEvent
 
         # Corner widgets setup
-        from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton
         self.corner_container = QWidget()
         self.corner_layout = QHBoxLayout(self.corner_container)
         self.corner_layout.setContentsMargins(0, 0, 0, 0)
@@ -156,6 +184,17 @@ class TerminalManager(QTabWidget):
 
         self.setCornerWidget(self.corner_container, Qt.TopRightCorner)
         self.currentChanged.connect(self._on_tab_changed)
+
+        # Decoupled compiler pipeline & background worker state
+        self.pipeline = CompilerPipeline(self._get_project_root())
+        self._active_worker: Optional[CompilationWorker] = None
+        self._running_workers: set[CompilationWorker] = set()
+        self._pending_run_after_compile: bool = False
+        self.current_tokens = []
+        self.current_ast = None
+        self.current_semantic_ast = None
+        self.current_syntax_errors = []
+        self.current_semantic_errors = []
 
     def _on_tab_changed(self, index):
         # Show AST Visualization buttons when Syntax Analysis or Semantic Analysis is the active tab
@@ -208,7 +247,16 @@ class TerminalManager(QTabWidget):
         current_widget = self.currentWidget()
         
         texto_copiar = ""
-        if isinstance(current_widget, QPlainTextEdit):
+        if current_widget == self.codigo_intermedio:
+            tm_text = self.tm_code_edit.toPlainText()
+            ci_text = self.ci_code_edit.toPlainText()
+            texto_copiar = (
+                "=== CÓDIGO OBJETO TM (.tm) ===\n"
+                f"{tm_text}\n\n"
+                "=== CÓDIGO INTERMEDIO DE TRES DIRECCIONES (.ci) ===\n"
+                f"{ci_text}"
+            )
+        elif isinstance(current_widget, QPlainTextEdit):
             texto_copiar = current_widget.toPlainText()
         elif isinstance(current_widget, QTreeWidget):
             def recurse_tree(item, level=0):
@@ -331,130 +379,138 @@ class TerminalManager(QTabWidget):
 
     # =====================================================================
     # METHOD: setup_terminal (INTERACTIVE PROCESSING CORE)
-    # What it does: Spawns a system sub-process (PowerShell) and connects pipes.
-    # What components it uses: QProcess, Standard Input/Output Pipes.
-    # How it interacts: Enables the IDE to run console commands like 'python'
-    # or 'openssl' by integrating the Windows shell directly into the UI.
     # =====================================================================
     def setup_terminal(self):
-        """Initializes the PowerShell process for the main terminal."""
-        self.terminal_edit.setReadOnly(False)
+        """Initializes the PowerShell shell and managed TM runner process."""
+        if hasattr(self, "process") and self.process is not None:
+            try:
+                self.process.readyReadStandardOutput.disconnect()
+                self.process.readyReadStandardError.disconnect()
+            except (RuntimeError, TypeError):
+                pass
+            if self.process.state() != QProcess.ProcessState.NotRunning:
+                self.process.kill()
 
-        # Asynchronous sub-process engine configuration
+        if hasattr(self, "tm_process") and self.tm_process is not None:
+            try:
+                self.tm_process.readyReadStandardOutput.disconnect()
+                self.tm_process.readyReadStandardError.disconnect()
+                self.tm_process.finished.disconnect()
+            except (RuntimeError, TypeError):
+                pass
+            if self.tm_process.state() != QProcess.ProcessState.NotRunning:
+                self.tm_process.kill()
+
+        self.terminal_edit.clear_terminal()
         self.process = QProcess(self)
         self.process.readyReadStandardOutput.connect(self.handle_stdout)
         self.process.readyReadStandardError.connect(self.handle_stderr)
 
-        self.interactive_position = 0
+        self.tm_process = QProcess(self)
+        self.tm_process.readyReadStandardOutput.connect(self._handle_tm_stdout)
+        self.tm_process.readyReadStandardError.connect(self._handle_tm_stderr)
+        self.tm_process.finished.connect(self._on_tm_finished)
+
+        if not getattr(self, "_terminal_signals_bound", False):
+            self.terminal_edit.command_submitted.connect(self._on_terminal_command_submitted)
+            self.terminal_edit.interrupt_requested.connect(self.interrupt_terminal_process)
+            self.terminal_edit.clear_requested.connect(self.clear_terminal_view)
+            self.terminal_edit.tab_completion_requested.connect(self.handle_tab_completion)
+            self._terminal_signals_bound = True
 
         # Start shell with UTF-8 encoding forced to avoid encoding artifacts
-        self.process.start("powershell.exe", ["-NoExit", "-Command", "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8"])
+        self.process.start(
+            "powershell.exe",
+            ["-NoExit", "-Command", "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8"],
+        )
 
+    @property
+    def interactive_position(self) -> int:
+        return self.terminal_edit.interactive_position
 
-    # =====================================================================
-    # PIPE READING METHODS: handle_stdout / handle_stderr
-    # What it does: Listens to and redirects the sub-process data flow to the UI.
-    # What components it uses: QProcess Standard Read methods, QTextCursor.
-    # How it interacts: Updates the view in real-time and maintains the
-    # 'interactive position' marker to protect terminal history.
-    # =====================================================================
+    @interactive_position.setter
+    def interactive_position(self, value: int) -> None:
+        self.terminal_edit.interactive_position = value
+
     def handle_stdout(self):
-        """Writes PowerShell standard output to the interface."""
-        data = self.process.readAllStandardOutput()
-        text = bytes(data).decode('utf-8', errors='replace')
-
-        # Cursor management for auto-scrolling and buffer positioning
-        cursor = self.terminal_edit.textCursor()
-        cursor.movePosition(QTextCursor.End)
-        self.terminal_edit.setTextCursor(cursor)
-        self.terminal_edit.insertPlainText(text)
-
-        # Update watermark to prevent editing of previous shell history
-        self.interactive_position = self.terminal_edit.textCursor().position()
-        self.terminal_edit.ensureCursorVisible()
+        """Writes PowerShell standard output with ANSI color support."""
+        data = bytes(self.process.readAllStandardOutput())
+        self.terminal_edit.append_output_bytes(data, is_stderr=False)
 
     def handle_stderr(self):
-        """Writes PowerShell error stream to the interface."""
-        data = self.process.readAllStandardError()
-        text = bytes(data).decode('utf-8', errors='replace')
+        """Writes PowerShell error stream safely at the end of output."""
+        data = bytes(self.process.readAllStandardError())
+        self.terminal_edit.append_output_bytes(data, is_stderr=True)
 
-        self.terminal_edit.insertPlainText(text)
-        self.interactive_position = self.terminal_edit.textCursor().position()
-        self.terminal_edit.ensureCursorVisible()
+    def _handle_tm_stdout(self):
+        data = bytes(self.tm_process.readAllStandardOutput())
+        self.terminal_edit.append_output_bytes(data, is_stderr=False)
 
+    def _handle_tm_stderr(self):
+        data = bytes(self.tm_process.readAllStandardError())
+        self.terminal_edit.append_output_bytes(data, is_stderr=True)
 
-    # =====================================================================
-    # METHOD: terminal_keyPressEvent (INPUT INTERCEPTOR)
-    # What it does: Validates and processes user keyboard input in the console.
-    # What components it uses: QKeyEvent, QProcess.write.
-    # How it interacts: Implements 'Shell Emulator' logic, sending commands
-    # to the sub-process only on 'Enter' and blocking deletions beyond the
-    # current prompt via 'interactive_position' validation.
-    # =====================================================================
+    def _on_tm_finished(self, exit_code: int, _exit_status) -> None:
+        self.terminal_edit.append_system_message(
+            f"\n> Simulador TM finalizado (código {exit_code}).\n",
+            color_hex="#569cd6" if exit_code == 0 else "#f48771",
+        )
+        if self.process.state() != QProcess.ProcessState.NotRunning:
+            self.process.write(b"\n")
+
+    def clear_terminal_view(self) -> None:
+        self.terminal_edit.clear_terminal()
+        if self.tm_process.state() == QProcess.ProcessState.NotRunning and self.process.state() != QProcess.ProcessState.NotRunning:
+            self.process.write(b"\n")
+
+    def interrupt_terminal_process(self) -> None:
+        """Handles Ctrl+C cleanly without killing the entire IDE or freezing Qt."""
+        if hasattr(self, "tm_process") and self.tm_process.state() != QProcess.ProcessState.NotRunning:
+            self.tm_process.kill()
+            self.terminal_edit.append_system_message(
+                "\n^C [Simulación TM abortada por el usuario]\n",
+                color_hex="#f48771",
+            )
+            return
+
+        if self.process.state() != QProcess.ProcessState.NotRunning:
+            self.terminal_edit.append_system_message("\n^C\n", color_hex="#f48771")
+            self.setup_terminal()
+
+    def _on_terminal_command_submitted(self, command: str) -> None:
+        """Routes submitted input lines either to active TM process (cin) or PowerShell."""
+        if hasattr(self, "tm_process") and self.tm_process.state() == QProcess.ProcessState.Running:
+            self.tm_process.write((command + "\n").encode("utf-8"))
+            return
+
+        if command.strip().lower() in ("clear", "cls"):
+            self.clear_terminal_view()
+            return
+
+        if self.process.state() == QProcess.ProcessState.NotRunning:
+            self.setup_terminal()
+
+        self.process.write((command + "\n").encode("utf-8"))
+
+        # Track working directory best-effort for tab completion
+        if command.lower().startswith("cd "):
+            target_dir = command[3:].strip().strip('"').strip("'")
+            base_dir = getattr(self, "current_terminal_dir", os.getcwd())
+            new_dir = os.path.normpath(os.path.join(base_dir, target_dir))
+            if os.path.isdir(new_dir):
+                self.current_terminal_dir = new_dir
+
     def terminal_keyPressEvent(self, event):
-        """Controls interactive keyboard input in the terminal."""
-        # Prompt protection: prevents deleting or moving cursor into history zones
-        if event.key() in (Qt.Key_Backspace, Qt.Key_Left):
-            if self.terminal_edit.textCursor().position() <= self.interactive_position:
-                return
-
-        # Process commands when Enter is pressed
-        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
-            cursor = self.terminal_edit.textCursor()
-            cursor.movePosition(QTextCursor.End)
-            self.terminal_edit.setTextCursor(cursor)
-
-            # Extract user input text from the last watermark position
-            cursor.setPosition(self.interactive_position, QTextCursor.KeepAnchor)
-            command = cursor.selectedText().strip()
-
-            # Reset tab completion state
-            self._tab_completion_state = None
-
-            # Handle internal UI commands (Clear Screen)
-            if command.lower() in ['clear', 'cls']:
-                self.terminal_edit.clear()
-                self.process.write(b"\n")
-                return
-
-            # ---> LA MAGIA SUCEDE AQUÍ <---
-            # Eliminamos lo que el usuario escribió en la UI para evitar el duplicado.
-            # PowerShell nos devolverá el comando como "Eco", así que aparecerá de nuevo
-            # de forma natural y con el salto de línea correcto.
-            cursor.removeSelectedText()
-
-            # Send the command string to the PowerShell input stream
-            self.process.write((command + "\n").encode('utf-8'))
-            
-            # If command starts with cd, try to track current directory (best effort)
-            if command.lower().startswith('cd '):
-                target_dir = command[3:].strip().strip('"').strip("'")
-                base_dir = getattr(self, 'current_terminal_dir', os.getcwd())
-                new_dir = os.path.normpath(os.path.join(base_dir, target_dir))
-                if os.path.isdir(new_dir):
-                    self.current_terminal_dir = new_dir
-                    
-            return
-
-        # Auto-complete on Tab
-        if event.key() == Qt.Key_Tab:
-            self.handle_tab_completion()
-            return
-        else:
-            # Reset tab completion state if any other key is pressed
-            if event.key() not in (Qt.Key_Shift, Qt.Key_Control, Qt.Key_Alt):
-                self._tab_completion_state = None
-
-        # Delegate standard keys to base QPlainTextEdit behavior
-        QPlainTextEdit.keyPressEvent(self.terminal_edit, event)
+        """Backwards-compatible entry point delegating to InteractiveTerminal."""
+        self.terminal_edit.keyPressEvent(event)
 
     def handle_tab_completion(self):
         """Implements PowerShell-like tab completion for files and directories."""
         cursor = self.terminal_edit.textCursor()
         
         # If we are already cycling through completions
-        if hasattr(self, '_tab_completion_state') and self._tab_completion_state:
-            state = self._tab_completion_state
+        if getattr(self.terminal_edit, '_tab_completion_state', None):
+            state = self.terminal_edit._tab_completion_state
             state['index'] = (state['index'] + 1) % len(state['matches'])
             
             # Replace current word with new match
@@ -565,7 +621,7 @@ class TerminalManager(QTabWidget):
                 cursor.insertText(match)
                 
                 # Save state for consecutive tabs
-                self._tab_completion_state = {
+                self.terminal_edit._tab_completion_state = {
                     'start_pos': start_pos,
                     'end_pos': start_pos + len(match),
                     'matches': matches,
@@ -594,424 +650,352 @@ class TerminalManager(QTabWidget):
             self.process.write(command.encode('utf-8'))
 
     # =====================================================================
-    # ASYNCHRONOUS MANAGEMENT: execute_lexical and on_lexical_finished
-    # What it does: Initializes the scanner worker and handles its callback.
+    # ASYNCHRONOUS MANAGEMENT & UNIFIED COMPILER PIPELINE UI SINK
     # =====================================================================
-    def execute_lexical(self, source_code):
-            """Processes code using a background thread."""
-            self.setCurrentIndex(1)
-            self.show()
-            self.lexico_output.clear()
-            
-            editor = self.get_current_editor()
-            if editor:
-                editor.clear_error_highlights()
 
-            if not source_code:
-                item = QTreeWidgetItem(self.lexico_output)
-                item.setText(0, "ERROR")
-                item.setText(1, "No file selected. Open or save a file first.")
-                return
+    def _start_compilation_worker(
+        self,
+        source_code_or_path,
+        target_stage: str = "full",
+        silent: bool = False,
+        run_after: bool = False,
+    ) -> None:
+        """Runs CompilerPipeline in a background QThread, safely cancelling any older in-flight worker."""
+        prev_worker = self._active_worker
+        self._active_worker = None
+        if prev_worker is not None:
+            try:
+                if prev_worker.isRunning():
+                    prev_worker.cancel()
+            except RuntimeError:
+                pass
 
-            item = QTreeWidgetItem(self.lexico_output)
-            item.setText(0, "INFO")
-            item.setText(1, f"Executing lexical analysis...")
+        editor = self.get_current_editor()
+        fallback_text = editor.toPlainText() if editor else ""
+        self._pending_run_after_compile = run_after
 
-            # Prepare worker by passing the file path/source
-            self.lexer_thread = LexerWorker(source_code)
+        worker = CompilationWorker(
+            source_code_or_path=source_code_or_path,
+            fallback_text=fallback_text,
+            target_stage=target_stage,
+            silent=silent,
+            run_after=run_after,
+            project_root=self._get_project_root(),
+            parent=self,
+        )
+        self._running_workers.add(worker)
+        worker.compilation_finished.connect(self._on_worker_finished)
+        worker.finished.connect(lambda w=worker: self._cleanup_worker(w))
+        self._active_worker = worker
+        worker.start()
 
-            # Connect completion signal to the UI update callback
-            self.lexer_thread.finished_signal.connect(self.on_lexical_finished)
+    def _cleanup_worker(self, worker: CompilationWorker) -> None:
+        """Safely clears references before scheduling C++ object deletion."""
+        self._running_workers.discard(worker)
+        if self._active_worker is worker:
+            self._active_worker = None
+        try:
+            worker.deleteLater()
+        except RuntimeError:
+            pass
 
-            # Start the background worker!
-            self.lexer_thread.start()
-
-    def on_lexical_finished(self, tokens_list, error):
-        """This function is called automatically when LexerWorker finishes."""
-        self.lexico_output.clear()
-        
-        # Early return if there is some problem
-        if error:
-            item = QTreeWidgetItem(self.lexico_output)
-            item.setText(0, "CRITICAL ERROR")
-            item.setText(1, error)
+    def _on_worker_finished(self, result: CompilationResult, target_stage: str, silent: bool) -> None:
+        """Handles CompilationResult on the main UI thread."""
+        sender = self.sender()
+        if sender is not None and getattr(sender, "is_cancelled", False):
             return
-            
-        # Resolver problema de Enum y separar errores léxicos
-        errors = [t for t in tokens_list if hasattr(t[0], 'name') and t[0].name == "ERROR"]
-        valid_tokens = [t for t in tokens_list if not (hasattr(t[0], 'name') and t[0].name in ["ERROR", "COMMENT_LINE", "COMMENT_BLOCK"])]
-        
-        # Poblar QTreeWidget de errores
-        if len(errors) > 0:
 
-            error_color = QColor("#ff5555")
-            editor = self.get_current_editor()
-            
-            for t in errors:
-                line = t[2] if len(t) > 2 else "?"
-                col = t[3] if len(t) > 3 else "?"
-                item = QTreeWidgetItem(self.errores)
-                msg = f"Lexical Error: Unexpected Token ('{t[1]}')"
-                item.setText(0, msg)
-                item.setText(1, f"Ln {line}, Col {col}")
-                item.setForeground(0, error_color)
-                item.setForeground(1, error_color)
-                
-                if editor and str(line).isdigit() and str(col).isdigit():
-                    editor.add_error_highlight(int(line) - 1, int(col) - 1, msg)
-            
-            self.alert_errors_tab()
-        
-        # Poblar pestaña de Léxico SÓLO con tokens válidos
+        self._apply_compilation_result(result, target_stage=target_stage, silent=silent)
+        self.compilation_completed.emit(result, target_stage, silent)
+
+        should_run = getattr(sender, "run_after", False) if sender is not None else self._pending_run_after_compile
+        if should_run:
+            self._pending_run_after_compile = False
+            self._launch_tm_execution(result)
+
+    def _populate_lexical_tree(self, valid_tokens) -> None:
+        self.lexico_output.clear()
         for t in valid_tokens:
             item = QTreeWidgetItem(self.lexico_output)
-            item.setText(0, str(t[0].name) if hasattr(t[0], 'name') else str(t[0]))
+            item.setText(0, str(t[0].name) if hasattr(t[0], "name") else str(t[0]))
             item.setText(1, str(t[1]))
             line = t[2] if len(t) > 2 else "?"
             col = t[3] if len(t) > 3 else "?"
             item.setText(2, f"Ln {line}, Col {col}")
 
+    def _apply_compilation_result(
+        self,
+        result: CompilationResult,
+        target_stage: str = "full",
+        silent: bool = False,
+    ) -> None:
+        """Single UI update sink for all compiler stages."""
+        editor = self.get_current_editor()
+        self.current_tokens = result.all_tokens
 
-    def execute_syntactic(self, source_code):
-        """Processes code and updates the Syntactic tab."""
-        self.setCurrentIndex(2)
+        if result.source_code == "" and any(d.phase == "General" for d in result.diagnostics):
+            err_dicts = result.errors_as_dicts
+            self._populate_errors_tab(err_dicts, editor)
+            self.diagnostics_updated.emit(err_dicts)
+            self._clear_generated_code_outputs("No source code available. Open or write a .jpp file first.")
+            if not silent:
+                if target_stage == "lexical":
+                    self.lexico_output.clear()
+                    item = QTreeWidgetItem(self.lexico_output)
+                    item.setText(0, "ERROR")
+                    item.setText(1, "No file selected. Open or save a file first.")
+                elif target_stage == "syntactic":
+                    self.sintactico_output.clear()
+                    item = QTreeWidgetItem(self.sintactico_output)
+                    item.setText(0, "ERROR")
+                    item.setText(1, "No file selected. Open or save a file first.")
+                elif target_stage == "semantic":
+                    self.semantico_output.clear()
+                    item = QTreeWidgetItem(self.semantico_output)
+                    item.setText(0, "ERROR")
+                    item.setText(1, "No AST found. Please run Syntax Analysis first.")
+                self.alert_errors_tab()
+            return
+
+        if not silent:
+            self._populate_lexical_tree(result.valid_tokens)
+
+        if target_stage in ("syntactic", "semantic", "full"):
+            self.current_ast = result.syntactic_ast
+            self.current_syntax_errors = list(result.syntax_error_strings)
+            if not silent:
+                self._populate_ast_tree(result.syntactic_ast, self.sintactico_output)
+                try:
+                    from ide.components.html_tree_visualizer import export_ast_to_html
+                    export_ast_to_html(result.syntactic_ast, self.current_syntax_errors, "Syntactic AST Visualization")
+                except Exception:
+                    pass
+
+        if target_stage in ("semantic", "full") and result.semantic_ast is not None:
+            self.current_semantic_ast = result.semantic_ast
+            self.current_semantic_errors = list(result.semantic_error_strings)
+            if not silent:
+                self._populate_ast_tree(result.semantic_ast, self.semantico_output)
+                try:
+                    from ide.components.html_tree_visualizer import export_ast_to_html
+                    export_ast_to_html(result.semantic_ast, self.current_semantic_errors, "Semantic AST Visualization")
+                except Exception:
+                    pass
+            self._populate_symbol_table(result.symbols)
+
+        err_dicts = result.errors_as_dicts
+        self._populate_errors_tab(err_dicts, editor)
+        self.diagnostics_updated.emit(err_dicts)
+
+        if target_stage == "full":
+            if not result.success or result.diagnostics:
+                if not silent:
+                    self.alert_errors_tab()
+                summary = "\n".join(
+                    f"• {d.message} (Ln {d.line}, Col {d.col})" for d in result.diagnostics
+                )
+                self._clear_generated_code_outputs(
+                    "=== COMPILATION ABORTED ===\n"
+                    "Fix the following errors before generating .tm / .ci code:\n\n"
+                    f"{summary}"
+                )
+            else:
+                self.tm_code_edit.setPlainText(result.tm_code)
+                self.ci_code_edit.setPlainText(result.ci_code)
+        elif result.diagnostics and not silent:
+            self.alert_errors_tab()
+
+    def execute_lexical(self, source_code):
+        """Processes lexical analysis using the background CompilationWorker."""
+        self.setCurrentIndex(1)
         self.show()
-        self.sintactico_output.clear()
-        
+        self.lexico_output.clear()
+        self.errores.clear()
+
         editor = self.get_current_editor()
         if editor:
             editor.clear_error_highlights()
 
-        if not source_code:
+        if not source_code and not (editor and editor.toPlainText().strip()):
+            item = QTreeWidgetItem(self.lexico_output)
+            item.setText(0, "ERROR")
+            item.setText(1, "No file selected. Open or save a file first.")
+            return
+
+        item = QTreeWidgetItem(self.lexico_output)
+        item.setText(0, "INFO")
+        item.setText(1, "Executing lexical analysis...")
+        self._start_compilation_worker(source_code, target_stage="lexical", silent=False)
+
+    def execute_syntactic(self, source_code):
+        """Processes syntax analysis asynchronously and updates the Syntactic tab."""
+        self.setCurrentIndex(2)
+        self.show()
+        self.sintactico_output.clear()
+        self.errores.clear()
+
+        editor = self.get_current_editor()
+        if editor:
+            editor.clear_error_highlights()
+
+        if not source_code and not (editor and editor.toPlainText().strip()):
             item = QTreeWidgetItem(self.sintactico_output)
             item.setText(0, "ERROR")
             item.setText(1, "No file selected. Open or save a file first.")
             return
 
-        from compiler.syntax_analyzer.analizador_sintactico import Parser
-        from compiler.syntax_analyzer.ASTNode import ParserSignals
-        
-        # Initialize memory storage for AST Visualization
-        self.current_ast = None
-        self.current_syntax_errors = []
-        
-        # 1. Run scanner
-        scanner = SCANNER(source_code)
-        scanner.get_token()
-        
-        # 2. Setup signals
-        signals = ParserSignals()
-        
-        self.errores.clear()
-        
-        def handle_error(mensaje, linea, columna):
-
-
-            
-            error_text = f"Syntax Error: {mensaje} (Ln {linea}, Col {columna})"
-            self.current_syntax_errors.append(error_text)
-            
-            item = QTreeWidgetItem(self.errores)
-            msg = f"Syntax Error: {mensaje}"
-            item.setText(0, msg)
-            item.setText(1, f"Ln {linea}, Col {columna}")
-            error_color = QColor("#ff5555")
-            item.setForeground(0, error_color)
-            item.setForeground(1, error_color)
-            
-            editor = self.get_current_editor()
-            if editor and str(linea).isdigit() and str(columna).isdigit():
-                editor.add_error_highlight(int(linea) - 1, int(columna) - 1, msg)
-            self.alert_errors_tab()
-            
-        def handle_node(nombre, lexema):
-            # La señal node_signal emite cada nodo conforme se crea.
-            pass
-
-        signals.error_signal.connect(handle_error)
-        signals.node_signal.connect(handle_node)
-
-        # 3. Run parser
-        parser = Parser(scanner.list_tokens, signals=signals)
-        ast_root = parser.parse()
-        
-        # Save to memory for visualization
-        self.current_ast = ast_root
-        
-        # 4. Populate QTreeWidget
-        def renderizar_ast_en_ui(self_ref, ast_root, tree_widget):
-            tree_widget.clear() # Limpiar árbol anterior
-            if not ast_root:
-                return
-                
-            def construir_nodos_ui(nodo_datos, parent_ui):
-                item = QTreeWidgetItem(parent_ui)
-                item.setText(0, nodo_datos.name)
-                item.setText(1, str(nodo_datos.value))
-                line_str = f"Ln {nodo_datos.line}, Col {nodo_datos.col}" if str(nodo_datos.line).isdigit() else ""
-                item.setText(2, line_str)
-                
-                for hijo in nodo_datos.children:
-                    construir_nodos_ui(hijo, item)
-
-            root_item = QTreeWidgetItem(tree_widget)
-            root_item.setText(0, ast_root.name)
-            root_item.setText(1, str(ast_root.value))
-            line_str_root = f"Ln {ast_root.line}, Col {ast_root.col}" if str(ast_root.line).isdigit() else ""
-            root_item.setText(2, line_str_root)
-            
-            for child in ast_root.children:
-                construir_nodos_ui(child, root_item)
-                
-            tree_widget.expandAll()
-
         self.sintactico_output.setHeaderLabels(["Syntax Node", "Value / Code", "Line/Column"])
-        renderizar_ast_en_ui(self, ast_root, self.sintactico_output)
-        try:
-            from ide.components.html_tree_visualizer import export_ast_to_html
-            export_ast_to_html(ast_root, self.current_syntax_errors, "Syntactic AST Visualization")
-        except Exception:
-            pass
+        self._start_compilation_worker(source_code, target_stage="syntactic", silent=False)
 
     def execute_semantic(self, source_code):
-        """Processes code and updates the Semantic tab."""
+        """Processes semantic analysis asynchronously and updates Semantic & Symbol Table tabs."""
         self.setCurrentIndex(3)
         self.show()
-        
-        # 1. Clear previous errors and tree
         self.semantico_output.clear()
-        
+        self.errores.clear()
+
         editor = self.get_current_editor()
         if editor:
             editor.clear_error_highlights()
-            
-        if not hasattr(self, 'current_ast') or not self.current_ast:
-            if source_code:
-                try:
-                    from compiler.syntax_analyzer.analizador_sintactico import Parser
-                    from compiler.syntax_analyzer.ASTNode import ParserSignals
-                    scanner = SCANNER(source_code)
-                    scanner.get_token()
-                    signals = ParserSignals()
-                    parser = Parser(scanner.list_tokens, signals=signals)
-                    self.current_ast = parser.parse()
-                except Exception:
-                    pass
 
-        if not hasattr(self, 'current_ast') or not self.current_ast:
+        if not source_code and not (editor and editor.toPlainText().strip()):
             item = QTreeWidgetItem(self.semantico_output)
             item.setText(0, "ERROR")
             item.setText(1, "No AST found. Please run Syntax Analysis first.")
             return
 
-        from compiler.semantic_analyzer.semantic_analyzer import SemanticAnalyzer
-        analyzer = SemanticAnalyzer()
-        
-        annotated_ast, errors = analyzer.analyze(self.current_ast)
-        self.current_semantic_ast = annotated_ast
-        self.current_semantic_errors = [f"Semantic Error: {err['msg']} (Ln {err['line']}, Col {err['col']})" for err in errors]
-        
-
-
-
-        # 2. Add errors to Error Tab
-        if errors:
-            error_color = QColor("#ff5555")
-            for err in errors:
-                item = QTreeWidgetItem(self.errores)
-                msg = f"Semantic Error: {err['msg']}"
-                item.setText(0, msg)
-                item.setText(1, f"Ln {err['line']}, Col {err['col']}")
-                item.setForeground(0, error_color)
-                item.setForeground(1, error_color)
-                
-                if editor and str(err['line']).isdigit() and str(err['col']).isdigit():
-                    editor.add_error_highlight(int(err['line']) - 1, int(err['col']) - 1, msg)
-            self.alert_errors_tab()
-            
-        # 3. Populate QTreeWidget with Semantic AST
-        def renderizar_ast_en_ui(self_ref, ast_root, tree_widget):
-            tree_widget.clear()
-            if not ast_root: return
-                
-            def construir_nodos_ui(nodo_datos, parent_ui):
-                item = QTreeWidgetItem(parent_ui)
-                item.setText(0, nodo_datos.name)
-                item.setText(1, str(nodo_datos.value) if nodo_datos.value else "")
-                line_str = f"Ln {nodo_datos.line}, Col {nodo_datos.col}" if str(nodo_datos.line).isdigit() else ""
-                item.setText(2, line_str)
-                
-                for hijo in nodo_datos.children:
-                    construir_nodos_ui(hijo, item)
-
-            root_item = QTreeWidgetItem(tree_widget)
-            root_item.setText(0, ast_root.name)
-            root_item.setText(1, str(ast_root.value) if ast_root.value else "")
-            line_str_root = f"Ln {ast_root.line}, Col {ast_root.col}" if str(ast_root.line).isdigit() else ""
-            root_item.setText(2, line_str_root)
-            
-            for child in ast_root.children:
-                construir_nodos_ui(child, root_item)
-                
-            tree_widget.expandAll()
-
         self.semantico_output.setHeaderLabels(["Semantic Node", "Value / Code", "Line/Column"])
-        if isinstance(self.semantico_output, QTreeWidget):
-            renderizar_ast_en_ui(self, annotated_ast, self.semantico_output)
-        else:
-            self.semantico_output.setPlainText("Semantic Phase completed successfully.\nCheck Errors tab for details.")
-            
-        # Export HTML view
-        try:
-            from ide.components.html_tree_visualizer import export_ast_to_html
-            export_ast_to_html(annotated_ast, self.current_semantic_errors, "Semantic AST Visualization")
-        except Exception:
-            pass
+        self._start_compilation_worker(source_code, target_stage="semantic", silent=False)
 
-        # 4. Populate Symbol Table Tab
-        if isinstance(self.tabla, QTreeWidget):
-            self.tabla.clear()
-            for sym in analyzer.sym_table.all_symbols:
-                item = QTreeWidgetItem(self.tabla)
-                item.setText(0, sym.name)
-                item.setText(1, sym.dtype)
-                item.setText(2, str(sym.value) if getattr(sym, 'value', None) is not None else "-")
-                item.setText(3, str(sym.offset))
-                item.setText(4, ", ".join(map(str, sym.lines)))
-        else:
-            table_text = "Name | Type | Value | Offset | Lines\n"
-            table_text += "-"*50 + "\n"
-            for sym in analyzer.sym_table.all_symbols:
-                val_str = str(sym.value) if getattr(sym, 'value', None) is not None else "-"
-                table_text += f"{sym.name} | {sym.dtype} | {val_str} | {sym.offset} | {', '.join(map(str, sym.lines))}\n"
-            self.tabla.setPlainText(table_text)
+    def _get_project_root(self) -> str:
+        curr_dir = os.path.dirname(os.path.abspath(__file__))
+        return os.path.dirname(os.path.dirname(curr_dir))
 
-    def execute_intermediate(self, source_code):
-        """Generates and displays intermediate code."""
-        self.setCurrentIndex(4)
-        self.show()
-        self.codigo_intermedio.clear()
-        
+    def _get_output_dir(self) -> str:
+        out_dir = os.path.join(self._get_project_root(), "compiler_output")
+        os.makedirs(out_dir, exist_ok=True)
+        return out_dir
+
+    def _resolve_source_and_path(self, source_code_or_path):
+        """Delegates source resolution to CompilerPipeline."""
         editor = self.get_current_editor()
+        fallback_text = editor.toPlainText() if editor else ""
+        return self.pipeline.resolve_source(source_code_or_path, fallback_text=fallback_text)
+
+    def _clear_generated_code_outputs(self, reason_msg: str):
+        """Updates viewers and removes stale .tm/.ci files so invalid builds cannot be shown or run."""
+        self.tm_code_edit.setPlainText(reason_msg)
+        self.ci_code_edit.setPlainText(reason_msg)
+        self.pipeline.clear_stale_artifacts()
+
+    def _populate_ast_tree(self, ast_root, tree_widget):
+        """Populates a QTreeWidget from an ASTNode tree."""
+        tree_widget.clear()
+        if not ast_root:
+            return
+
+        def build_item(node_data, parent_ui):
+            item = QTreeWidgetItem(parent_ui)
+            item.setText(0, node_data.name)
+            item.setText(1, str(node_data.value) if node_data.value is not None else "")
+            line_str = f"Ln {node_data.line}, Col {node_data.col}" if str(node_data.line).isdigit() else ""
+            item.setText(2, line_str)
+            for child in node_data.children:
+                build_item(child, item)
+
+        build_item(ast_root, tree_widget)
+        tree_widget.expandAll()
+
+    def _populate_symbol_table(self, symbols):
+        """Populates the Symbol Table view from SymbolTable.all_symbols."""
+        self.tabla.clear()
+        for sym in symbols:
+            item = QTreeWidgetItem(self.tabla)
+            item.setText(0, sym.name)
+            item.setText(1, sym.dtype)
+            item.setText(2, str(sym.value) if getattr(sym, "value", None) is not None else "-")
+            item.setText(3, str(sym.offset))
+            item.setText(4, ", ".join(map(str, sym.lines)))
+
+    def _populate_errors_tab(self, all_errors, editor=None):
+        """Populates the Errors tab and underlines error locations in the active editor."""
+        self.errores.clear()
         if editor:
             editor.clear_error_highlights()
 
-        # Simulated 3-address code or quadruples generation
-        resultado_simulado = f"=== INTERMEDIATE CODE ===\nQuadruples generated for:\n{source_code}"
-        self.codigo_intermedio.setPlainText(resultado_simulado)
+        error_color = QColor("#ff5555")
+        for err in all_errors:
+            item = QTreeWidgetItem(self.errores)
+            msg = err["msg"]
+            line = err.get("line", "?")
+            col = err.get("col", "?")
+            item.setText(0, msg)
+            item.setText(1, f"Ln {line}, Col {col}")
+            item.setForeground(0, error_color)
+            item.setForeground(1, error_color)
+
+            if editor and str(line).isdigit() and str(col).isdigit():
+                editor.add_error_highlight(max(0, int(line) - 1), max(0, int(col) - 1), msg)
+
+    def compile_full_pipeline(self, source_code_or_path, silent: bool = False):
+        """
+        Synchronous wrapper around CompilerPipeline for immediate callers / tests.
+        Returns (success: bool, tm_path: Optional[str], errors: list).
+        """
+        editor = self.get_current_editor()
+        fallback_text = editor.toPlainText() if editor else ""
+        result = self.pipeline.run(
+            source_code_or_path,
+            fallback_text=fallback_text,
+            target_stage="full",
+        )
+        self._apply_compilation_result(result, target_stage="full", silent=silent)
+        return result.success, result.tm_path, result.errors_as_dicts
+
+    def execute_intermediate(self, source_code):
+        """Compiles the full pipeline asynchronously and displays .tm and .ci side by side."""
+        self.setCurrentIndex(4)
+        self.show()
+        self._start_compilation_worker(source_code, target_stage="full", silent=False)
+
+    def _launch_tm_execution(self, result: CompilationResult) -> None:
+        self.setCurrentIndex(0)
+        self.show()
+
+        if not result.success or not result.tm_path:
+            self.terminal_edit.append_system_message(
+                "\n[COMPILATION ABORTED] Fix the reported errors (see 'Errors' tab) before running in TM.\n",
+                color_hex="#f48771",
+            )
+            self.alert_errors_tab()
+            return
+
+        if hasattr(self, "tm_process") and self.tm_process.state() != QProcess.ProcessState.NotRunning:
+            self.tm_process.kill()
+            self.tm_process.waitForFinished(300)
+
+        tm_name = os.path.basename(result.tm_path)
+        self.terminal_edit.append_system_message(
+            f"\n> Ejecutando simulador TM ({tm_name})...\n",
+            color_hex="#4ec9b0",
+        )
+
+        tm_script_path = os.path.join(self._get_project_root(), "compiler", "tm_simulator", "tm_simulator.py")
+        self.tm_process.setWorkingDirectory(self._get_project_root())
+        self.tm_process.start(sys.executable, ["-u", tm_script_path, result.tm_path])
+        self.terminal_edit.setFocus()
+
+    def execute_run(self, source_code):
+        """Compiles the active file asynchronously and runs the generated .tm code inside Terminal."""
+        self.setCurrentIndex(0)
+        self.show()
+        self._start_compilation_worker(source_code, target_stage="full", silent=False, run_after=True)
 
     def execute_silent_compilation(self, source_code_or_path, active_tab_index=3):
         """
-        Runs compilation silently in the background:
-        - Does NOT show modals or change active tab or steal focus.
-        - Updates ASTs, errors, symbol table, and editor error highlights.
-        - Automatically exports results and updates ast_view.html.
+        Runs full compilation asynchronously in a background QThread without stealing focus.
+        Updates ASTs, errors, symbol table, and .tm / .ci outputs once finished.
         """
         if not source_code_or_path:
             return
-
-        import os
-        editor = self.get_current_editor()
-        source_code = ""
-        file_path = ""
-        if os.path.exists(source_code_or_path):
-            file_path = source_code_or_path
-            try:
-                with open(file_path, 'r', encoding='latin-1') as f:
-                    source_code = f.read()
-            except Exception:
-                if editor:
-                    source_code = editor.toPlainText()
-        else:
-            source_code = source_code_or_path
-
-        if not source_code and editor:
-            source_code = editor.toPlainText()
-
-        if not source_code:
-            return
-
-        from compiler.lexical_analyzer.SCAN import SCANNER
-        from compiler.syntax_analyzer.analizador_sintactico import Parser
-        from compiler.syntax_analyzer.ASTNode import ParserSignals
-        from compiler.semantic_analyzer.semantic_analyzer import SemanticAnalyzer
-        from ide.components.html_tree_visualizer import export_ast_to_html
-        from PySide6.QtGui import QColor
-        from PySide6.QtWidgets import QTreeWidgetItem
-
-        try:
-            # 1. Lexical phase
-            scanner = SCANNER(file_path if file_path else source_code)
-            scanner.get_token()
-            self.current_tokens = scanner.list_tokens
-
-            all_errors = []
-            if hasattr(scanner, 'errores_lexicos') and scanner.errores_lexicos:
-                for err in scanner.errores_lexicos:
-                    msg = str(err.get('error', err))
-                    all_errors.append({"type": "Lexical", "msg": f"Lexical Error: {msg}", "line": err.get('linea', 1), "col": err.get('columna', 1)})
-
-            # 2. Syntactic phase
-            signals = ParserSignals()
-            syntax_errors = []
-            def silent_syntax_error(msg, line, col):
-                syntax_errors.append(f"Syntax Error: {msg} (Ln {line}, Col {col})")
-                all_errors.append({"type": "Syntax", "msg": f"Syntax Error: {msg}", "line": line, "col": col})
-            signals.error_ocurrido.connect(silent_syntax_error)
-
-            parser = Parser(scanner.list_tokens, signals=signals)
-            ast_root = parser.parse()
-            self.current_ast = ast_root
-            self.current_syntax_errors = syntax_errors
-            try:
-                parser.serialize_ast(ast_root)
-            except Exception:
-                pass
-
-            # 3. Semantic phase
-            semantic_errors = []
-            if ast_root:
-                analyzer = SemanticAnalyzer()
-                annotated_ast, sem_errs = analyzer.analyze(ast_root)
-                self.current_semantic_ast = annotated_ast
-                for err in sem_errs:
-                    msg = f"Semantic Error: {err['msg']}"
-                    semantic_errors.append(f"{msg} (Ln {err['line']}, Col {err['col']})")
-                    all_errors.append({"type": "Semantic", "msg": msg, "line": err['line'], "col": err['col']})
-                self.current_semantic_errors = semantic_errors
-                
-                # Export HTML AST view silently
-                try:
-                    export_ast_to_html(annotated_ast, semantic_errors, "Semantic AST Visualization")
-                except Exception:
-                    pass
-
-                # Update symbol table tab data silently
-                if isinstance(self.tabla, QTreeWidget):
-                    self.tabla.clear()
-                    for sym in analyzer.sym_table.all_symbols:
-                        item = QTreeWidgetItem(self.tabla)
-                        item.setText(0, sym.name)
-                        item.setText(1, sym.dtype)
-                        item.setText(2, str(sym.value) if getattr(sym, 'value', None) is not None else "-")
-                        item.setText(3, str(sym.offset))
-                        item.setText(4, ", ".join(map(str, sym.lines)))
-
-            # 4. Update editor highlights and tooltips silently
-            if editor:
-                editor.clear_error_highlights()
-                for err in all_errors:
-                    editor.add_error_highlight(err['line'], err['col'], err['msg'])
-
-            # 5. Update Error list tab silently
-            self.errores.clear()
-            error_color = QColor("#ff5555")
-            for err in all_errors:
-                item = QTreeWidgetItem(self.errores)
-                item.setText(0, err['msg'])
-                item.setText(1, f"Ln {err['line']}, Col {err['col']}")
-                item.setForeground(0, error_color)
-                item.setForeground(1, error_color)
-
-        except Exception:
-            pass
+        self._start_compilation_worker(source_code_or_path, target_stage="full", silent=True)
