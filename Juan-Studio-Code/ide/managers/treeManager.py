@@ -15,18 +15,34 @@ from PySide6.QtCore import QModelIndex, QFileInfo, QObject, Signal
 # - Controller/Proxy: Bridges the file explorer, code editor, and terminal.
 
 class CustomIconProvider(QFileIconProvider):
+    def __init__(self):
+        super().__init__()
+        self._root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self._icons_dir = os.path.join(self._root_dir, "icons")
+        self._icon_cache = {
+            "folder": QIcon(os.path.join(self._icons_dir, "new_folder.svg")),
+            "jpp": QIcon(os.path.join(self._icons_dir, "file_jpp.svg")),
+            "py": QIcon(os.path.join(self._icons_dir, "file_py.svg")),
+            "ir": QIcon(os.path.join(self._icons_dir, "intermedio.svg")),
+            "file": QIcon(os.path.join(self._icons_dir, "open_file.svg")),
+        }
+
     def icon(self, arg):
-        # We need to point to the root directory, which is one level up from managers
-        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         if isinstance(arg, QFileInfo):
             if arg.isDir():
-                return QIcon(os.path.join(root_dir, "icons", "new_folder.svg"))
-            else:
-                return QIcon(os.path.join(root_dir, "icons", "open_file.svg"))
+                return self._icon_cache["folder"]
+            suffix = arg.suffix().lower()
+            if suffix == "jpp":
+                return self._icon_cache["jpp"]
+            if suffix == "py":
+                return self._icon_cache["py"]
+            if suffix in ("tm", "ci"):
+                return self._icon_cache["ir"]
+            return self._icon_cache["file"]
         if arg == QFileIconProvider.Folder:
-            return QIcon(os.path.join(root_dir, "icons", "new_folder.svg"))
+            return self._icon_cache["folder"]
         elif arg == QFileIconProvider.File:
-            return QIcon(os.path.join(root_dir, "icons", "open_file.svg"))
+            return self._icon_cache["file"]
         return super().icon(arg)
 
 class TreeManager(QObject):
@@ -86,11 +102,14 @@ class TreeManager(QObject):
 
         if os.path.isfile(file_path):
             try:
-                # Use latin-1 to maintain compatibility with original file encodings
-                with open(file_path, 'r', encoding='latin-1') as f:
-                    content = f.read()
-                    file_name = self.model.fileName(index)
-                    self.file_opened.emit(file_name, content, file_path)
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                except UnicodeDecodeError:
+                    with open(file_path, 'r', encoding='latin-1') as f:
+                        content = f.read()
+                file_name = self.model.fileName(index)
+                self.file_opened.emit(file_name, content, file_path)
             except Exception as e:
                 print(f"CRITICAL: Could not read the file: {e}")
 
@@ -242,8 +261,12 @@ class TreeManager(QObject):
         file_path, _ = QFileDialog.getOpenFileName(None, 'Open File', self.main_app.current_path, "JPP Files (*.jpp);;All Files (*.*)")
         if file_path:
             try:
-                with open(file_path, 'r', encoding='latin-1') as f:
-                    content = f.read()
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                except UnicodeDecodeError:
+                    with open(file_path, 'r', encoding='latin-1') as f:
+                        content = f.read()
                 file_name = os.path.basename(file_path)
                 self.file_opened.emit(file_name, content, file_path)
                 # Synchronize tree to the file's parent folder

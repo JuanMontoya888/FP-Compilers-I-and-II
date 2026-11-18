@@ -2,29 +2,22 @@ from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QFont, QColor
 from PySide6.QtCore import QRegularExpression
 from ide.components.theme import Theme
 
+
 # =====================================================================
-# CLASS: Highlighter (SYNTAX HIGHLIGHTING ENGINE)
-# Scans the editor's document using Regular Expressions to apply
-# visual styles (colors, bold, italics) to specific code tokens.
-#
-# Components: QSyntaxHighlighter, QRegularExpression, QTextCharFormat.
-# Interaction: Attaches to the QTextDocument of the editor and
-# re-highlights text blocks whenever they are modified.
+# CLASS: Highlighter (OPTIMIZED SYNTAX HIGHLIGHTING ENGINE)
+# Scans modified QTextDocument blocks using consolidated, precompiled
+# QRegularExpression patterns with OptimizeOnFirstUsageOption.
 # =====================================================================
 class Highlighter(QSyntaxHighlighter):
-    # ============================================================
-    # METHOD: __init__
-    # What it does: Defines the language grammar and visual palette.
-    # Components: QTextCharFormat for styling, QRegularExpression for matching.
-    # Interaction: Populates a list of rules that map patterns to styles.
-    # ============================================================
+    @staticmethod
+    def _compile_regex(pattern: str) -> QRegularExpression:
+        regex = QRegularExpression(pattern)
+        regex.optimize()
+        return regex
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.highlightingRules = []
-
-        # ----------------------------------------------------
-        # STYLING DEFINITIONS (DARK MODE THEME)
-        # ----------------------------------------------------
 
         # Structural Keywords (Pink/Red Monokai style)
         keywordFormat = QTextCharFormat()
@@ -41,8 +34,8 @@ class Highlighter(QSyntaxHighlighter):
         numberFormat.setForeground(QColor(Theme.SYNTAX_NUMBER))
 
         # Strings, Chars, and angle-bracket headers (Orange/Yellow)
-        stringFormat = QTextCharFormat()
-        stringFormat.setForeground(QColor(Theme.SYNTAX_STRING))
+        self.stringFormat = QTextCharFormat()
+        self.stringFormat.setForeground(QColor(Theme.SYNTAX_STRING))
 
         # Operators and Symbols (Light Gray)
         operatorFormat = QTextCharFormat()
@@ -59,84 +52,100 @@ class Highlighter(QSyntaxHighlighter):
         self.librariesFormat.setFontItalic(True)
         self.librariesFormat.setFontWeight(QFont.Bold)
 
-        # ----------------------------------------------------
-        # REGEX MAPPING
-        # ----------------------------------------------------
+        # -----------------------------------------------------------------
+        # CONSOLIDATED PRECOMPILED REGEX RULES (7 patterns instead of 93)
+        # -----------------------------------------------------------------
+        keywords_pattern = (
+            r"\b(?:if|else|end|do|while|then|switch|case|main|cin|cout|"
+            r"break|continue|for|goto|return|try|catch|throw|class|struct|"
+            r"public|private|protected|virtual|friend|inline|template|typename|"
+            r"this|new|delete|enum|union|namespace|using|typedef|sizeof|"
+            r"static|const|extern|explicit|operator|constexpr|decltype|noexcept|"
+            r"volatile|default|true|false|nullptr)\b"
+        )
+        data_types_pattern = (
+            r"\b(?:int|float|string|bool|char|double|long|short|void|auto|"
+            r"signed|unsigned|wchar_t)\b"
+        )
+        directives_pattern = r"#(?:include|define)\b"
+        numbers_pattern = r"\b[0-9]+(?:\.[0-9]+)?\b"
+        operators_pattern = r"\+\+|--|<=|>=|==|!=|&&|\|\||[+\-*/%^<>!=(),;:{}\[\]]"
+        # Non-greedy string & char literals supporting escaped quotes
+        string_char_pattern = r'"[^"\\]*(?:\\.[^"\\]*)*"|\'[^\'\\]*(?:\\.[^\'\\]*)*\''
 
-        # Structural Keywords mapping
-        keywords = [
-            r"\bif\b", r"\belse\b", r"\bend\b", r"\bdo\b", r"\bwhile\b", r"\bthen\b",
-            r"\bswitch\b", r"\bcase\b", r"\bmain\b", r"\bcin\b", r"\bcout\b",
-            r"\bbreak\b", r"\bcontinue\b", r"\bfor\b", r"\bgoto\b", r"\breturn\b",
-            r"\btry\b", r"\bcatch\b", r"\bthrow\b", r"\bclass\b", r"\bstruct\b",
-            r"\bpublic\b", r"\bprivate\b", r"\bprotected\b", r"\bvirtual\b",
-            r"\bfriend\b", r"\binline\b", r"\btemplate\b", r"\btypename\b",
-            r"\bthis\b", r"\bnew\b", r"\bdelete\b", r"\benum\b", r"\bunion\b",
-            r"\bnamespace\b", r"\busing\b", r"\btypedef\b", r"\bsizeof\b",
-            r"\bstatic\b", r"\bconst\b", r"\bextern\b", r"\bexplicit\b",
-            r"\boperator\b", r"\bconstexpr\b", r"\bdecltype\b", r"\bnoexcept\b",
-            r"\bvolatile\b", r"\bdefault\b", r"\btrue\b", r"\bfalse\b", r"\bnullptr\b"
+        self.highlightingRules = [
+            (self._compile_regex(keywords_pattern), keywordFormat),
+            (self._compile_regex(data_types_pattern), typeFormat),
+            (self._compile_regex(directives_pattern), self.librariesFormat),
+            (self._compile_regex(numbers_pattern), numberFormat),
+            (self._compile_regex(operators_pattern), operatorFormat),
+            (self._compile_regex(string_char_pattern), self.stringFormat),
         ]
-        for word in keywords:
-            self.highlightingRules.append((QRegularExpression(word), keywordFormat))
 
-        # Data types mapping
-        data_types = [
-            r"\bint\b", r"\bfloat\b", r"\bstring\b", r"\bbool\b", r"\bchar\b",
-            r"\bdouble\b", r"\blong\b", r"\bshort\b", r"\bvoid\b", r"\bauto\b",
-            r"\bsigned\b", r"\bunsigned\b", r"\bwchar_t\b"
-        ]
-        for word in data_types:
-            self.highlightingRules.append((QRegularExpression(word), typeFormat))
+        self.includeHeaderExpression = self._compile_regex(r"<[a-zA-Z0-9_.]+>")
+        self.singleLineCommentExpression = self._compile_regex(r"//[^\n]*")
+        self.stringLiteralExpression = self._compile_regex(string_char_pattern)
+        self.commentStartExpression = self._compile_regex(r"/\*")
+        self.commentEndExpression = self._compile_regex(r"\*/")
 
-        # Directives, Numbers, Strings, and Operators rules
-        self.highlightingRules.append((QRegularExpression(r"#include"), self.librariesFormat))
-        self.highlightingRules.append((QRegularExpression(r"#define"), self.librariesFormat))
-        self.highlightingRules.append((QRegularExpression(r"\b[0-9]+(\.[0-9]+)?\b"), numberFormat))
-        self.highlightingRules.append((QRegularExpression(r'".*"'), stringFormat))
-        self.highlightingRules.append((QRegularExpression(r"'.?'"), stringFormat))
-        self.highlightingRules.append((QRegularExpression(r"<[a-zA-Z0-9_.]+>"), stringFormat))
+    def _collect_string_spans(self, text: str):
+        spans = []
+        it = self.stringLiteralExpression.globalMatch(text)
+        while it.hasNext():
+            m = it.next()
+            spans.append((m.capturedStart(), m.capturedStart() + m.capturedLength()))
+        return spans
 
-        operators = [
-            r"\+", r"-", r"\*", r"/", r"%", r"\^", r"\+\+", r"--",
-            r"<", r"<=", r">", r">=", r"==", r"!=", r"=", r"&&", r"\|\|", r"!",
-            r"\(", r"\)", r"\{", r"\}", r",", r";", r":"
-        ]
-        for op in operators:
-            self.highlightingRules.append((QRegularExpression(op), operatorFormat))
+    @staticmethod
+    def _inside_spans(pos: int, spans) -> bool:
+        for start, end in spans:
+            if start <= pos < end:
+                return True
+        return False
 
-        self.highlightingRules.append((QRegularExpression(r"//[^\n]*"), self.commentFormat))
-
-        # Block comment logic (state-dependent)
-        self.commentStartExpression = QRegularExpression(r"/\*")
-        self.commentEndExpression = QRegularExpression(r"\*/")
-
-    # ============================================================
-    # METHOD: highlightBlock
-    # What it does: Applies highlighting rules to a specific line.
-    # Interaction: Uses Qt's state management to handle multi-line
-    # comments spanning several blocks.
-    # ============================================================
     def highlightBlock(self, text):
-        # Apply all independent single-line rules
-        for pattern, format in self.highlightingRules:
+        # 1. Apply consolidated token rules
+        for pattern, fmt in self.highlightingRules:
             matchIterator = pattern.globalMatch(text)
             while matchIterator.hasNext():
                 match = matchIterator.next()
-                self.setFormat(match.capturedStart(), match.capturedLength(), format)
+                self.setFormat(match.capturedStart(), match.capturedLength(), fmt)
 
-        # Multi-line comment processing (State: 0 = Code, 1 = Comment)
+        # Highlight <header.h> only on preprocessor #include lines
+        if "#include" in text:
+            headerIterator = self.includeHeaderExpression.globalMatch(text)
+            while headerIterator.hasNext():
+                match = headerIterator.next()
+                self.setFormat(match.capturedStart(), match.capturedLength(), self.stringFormat)
+
+        # 2. Apply single-line comments (only when '//' is outside string literals)
+        string_spans = self._collect_string_spans(text)
+        comment_match = self.singleLineCommentExpression.match(text)
+        while comment_match.hasMatch():
+            c_start = comment_match.capturedStart()
+            if not self._inside_spans(c_start, string_spans):
+                self.setFormat(c_start, comment_match.capturedLength(), self.commentFormat)
+                break
+            comment_match = self.singleLineCommentExpression.match(text, c_start + 2)
+
+        # 3. Multi-line block comment state machine (0 = Code, 1 = Inside /* ... */)
         self.setCurrentBlockState(0)
         startIndex = 0
 
         if self.previousBlockState() != 1:
             match = self.commentStartExpression.match(text)
-            startIndex = match.capturedStart()
+            while match.hasMatch():
+                idx = match.capturedStart()
+                if not self._inside_spans(idx, string_spans):
+                    startIndex = idx
+                    break
+                match = self.commentStartExpression.match(text, idx + 2)
+            else:
+                startIndex = -1
 
         while startIndex >= 0:
             endMatch = self.commentEndExpression.match(text, startIndex)
             endIndex = endMatch.capturedStart()
-            commentLength = 0
 
             if endIndex == -1:
                 self.setCurrentBlockState(1)
@@ -145,5 +154,11 @@ class Highlighter(QSyntaxHighlighter):
                 commentLength = endIndex - startIndex + endMatch.capturedLength()
 
             self.setFormat(startIndex, commentLength, self.commentFormat)
-            startMatch = self.commentStartExpression.match(text, startIndex + commentLength)
-            startIndex = startMatch.capturedStart()
+            nextMatch = self.commentStartExpression.match(text, startIndex + commentLength)
+            startIndex = -1
+            while nextMatch.hasMatch():
+                idx = nextMatch.capturedStart()
+                if not self._inside_spans(idx, string_spans):
+                    startIndex = idx
+                    break
+                nextMatch = self.commentStartExpression.match(text, idx + 2)

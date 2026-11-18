@@ -163,10 +163,8 @@ class Shortcuts:
     # Interaction: Serves as a hook to connect the backend compiler.
     # =====================================================================
     def run_code(self):
-        """Logic for the F5 shortcut."""
-        print("F5 Shortcut pressed: Here we will connect the Python compiler!")
-        # If you have a Run button, you can trigger it like this:
-        # self.parent.ui.runButton.click()
+        """Logic for the F5 shortcut: compiles and runs .tm code in the Terminal."""
+        self.parent.open_bottom_panel(0, execute_analysis=True)
 
 
     # =====================================================================

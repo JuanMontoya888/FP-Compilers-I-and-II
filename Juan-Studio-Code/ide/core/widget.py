@@ -114,6 +114,10 @@ class Widget(QWidget):
         self.ui.newDirectoryButton.setIcon(QIcon(os.path.join(self.icons_dir, "new_folder.svg")))
         self.ui.newDirectoryButton.setIconSize(icon_size)
 
+        # Hide unused placeholder '...' button from top toolbar
+        if hasattr(self.ui, "toolsButton"):
+            self.ui.toolsButton.hide()
+
         # Accessibility: Defining tooltips for the button interface
         self.ui.saveFileButton.setToolTip("Save current file")
         self.ui.saveAsFileButton.setToolTip("Save file as...")
@@ -217,14 +221,30 @@ class Widget(QWidget):
         self.ui.splitter.addWidget(self.v_splitter)
         self.ui.splitter.setSizes([200, 800])
         
-        # Inject the background logo watermark for the empty workspace
+        # Inject the background logo watermark and SVG tab close icons (Qt requires resolved paths)
         current_style = self.styleSheet()
         bg_image_path = os.path.join(self.resources_dir, 'logoJSC.svg').replace('\\', '/')
+        close_icon_path = os.path.join(self.icons_dir, 'close_tab.svg').replace('\\', '/')
+        close_hover_path = os.path.join(self.icons_dir, 'close_tab_hover.svg').replace('\\', '/')
         self.setStyleSheet(current_style + f"""
             QTabWidget#tabWidget::pane {{
                 background-image: url({bg_image_path});
                 background-position: center;
                 background-repeat: no-repeat;
+            }}
+
+            QTabBar::close-button {{
+                image: url({close_icon_path});
+                background: transparent;
+                border: none;
+                border-radius: 3px;
+                padding: 2px;
+                subcontrol-position: right;
+            }}
+
+            QTabBar::close-button:hover {{
+                image: url({close_hover_path});
+                background-color: #e81123;
             }}
         """)
 
@@ -267,14 +287,42 @@ class Widget(QWidget):
             self.terminal_manager.show()
 
     def _clear_terminal(self):
-        self.terminal_manager.terminal_edit.clear()
-        self.terminal_manager.interactive_position = 0
+        self.terminal_manager.clear_terminal_view()
 
     def _kill_terminal_process(self):
-        if self.terminal_manager.process.state() != self.terminal_manager.process.NotRunning:
-            self.terminal_manager.process.kill()
-            self.terminal_manager.terminal_edit.appendPlainText("\n[PROCESS TERMINATED BY USER]\n")
-            self.terminal_manager.interactive_position = self.terminal_manager.terminal_edit.textCursor().position()
+        self.terminal_manager.interrupt_terminal_process()
+
+    def _sync_active_editor_to_disk(self):
+        """Synchronizes the active editor buffer to disk before running any compiler phase."""
+        current_index = self.editor_manager.tabs.currentIndex()
+        if current_index < 0:
+            return
+
+        current_page = self.editor_manager.tabs.widget(current_index)
+        if not hasattr(current_page, 'editor'):
+            return
+
+        content = current_page.editor.toPlainText()
+        if getattr(current_page, 'file_path', None):
+            try:
+                with open(current_page.file_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                title = self.editor_manager.tabs.tabText(current_index)
+                if title.endswith("*"):
+                    self.editor_manager.tabs.setTabText(current_index, title[:-1])
+                self.current_path = os.path.dirname(current_page.file_path)
+                self.current_file_selected = current_page.file_path
+            except Exception as e:
+                print(f"Warning: Could not sync active editor to disk - {e}")
+        elif content.strip():
+            output_dir = self.terminal_manager._get_output_dir()
+            buffer_path = os.path.join(output_dir, "_active_buffer.jpp")
+            try:
+                with open(buffer_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                self.current_file_selected = buffer_path
+            except Exception as e:
+                print(f"Warning: Could not write temporary editor buffer - {e}")
 
     # ============================================================
     # METHOD: open_bottom_panel (VIEW CONTROLLER)
@@ -288,8 +336,12 @@ class Widget(QWidget):
         Switches console tabs and triggers corresponding compiler logic.
         """
         if execute_analysis:
+            self._sync_active_editor_to_disk()
             # Execution Switch: Trigger backend task based on requested view
             match(tab_index):
+                case 0:
+                    # Compile and run generated .tm code inside interactive Terminal
+                    self.terminal_manager.execute_run(self.current_file_selected)
                 case 1:
                     # Clear terminal
                     self.terminal_manager.errores.clear()
@@ -300,6 +352,12 @@ class Widget(QWidget):
                     self.terminal_manager.execute_syntactic(self.current_file_selected)
                 case 3:
                     # Trigger semantic processing
+                    self.terminal_manager.execute_semantic(self.current_file_selected)
+                case 4:
+                    # Trigger full compilation and display .tm and .ci side by side
+                    self.terminal_manager.execute_intermediate(self.current_file_selected)
+                case 5:
+                    # Ensure Symbol Table reflects current source
                     self.terminal_manager.execute_semantic(self.current_file_selected)
 
         # Switch tab index and ensure the widget is visible to the user
