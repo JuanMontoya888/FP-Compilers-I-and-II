@@ -1,0 +1,99 @@
+[
+  {
+    "id": "collatz_pow_positive",
+    "program": "collatz_pow.jpp",
+    "expect_success": true,
+    "min_valid_tokens": 150,
+    "expected_ast_root_kind": "Program",
+    "expected_ast_child_kinds": ["Variable Declaration", "Input (cin)", "Selection (if)"],
+    "expected_symbols": [
+      {"name": "n", "dtype": "int", "offset": 0, "tm_offset": 0},
+      {"name": "steps", "dtype": "int", "offset": 4, "tm_offset": 1},
+      {"name": "max_val", "dtype": "int", "offset": 8, "tm_offset": 2},
+      {"name": "base", "dtype": "int", "offset": 12, "tm_offset": 3},
+      {"name": "exp", "dtype": "int", "offset": 16, "tm_offset": 4},
+      {"name": "calc", "dtype": "int", "offset": 20, "tm_offset": 5},
+      {"name": "flag", "dtype": "bool", "offset": 24, "tm_offset": 6},
+      {"name": "flag2", "dtype": "bool", "offset": 25, "tm_offset": 7}
+    ],
+    "expected_ci_fragments": ["read n", "if_false", "goto", "write steps", "write calc"],
+    "expected_tm_fragments": ["IN", "OUT", "HALT", "pow: result *= base"],
+    "tm_runs": [
+      {
+        "name": "collatz_7",
+        "inputs": [7],
+        "expected_outputs": [16, 52, 32, 30],
+        "expected_status": "srHALT",
+        "max_steps": 10000
+      },
+      {
+        "name": "boolean_short_circuit_branch",
+        "inputs": [0],
+        "expected_outputs": [0],
+        "expected_status": "srHALT",
+        "max_steps": 5000
+      }
+    ]
+  },
+  {
+    "id": "arithmetic_scopes",
+    "program": "arithmetic_scopes.jpp",
+    "expect_success": true,
+    "min_valid_tokens": 60,
+    "expected_ast_root_kind": "Program",
+    "expected_ast_child_kinds": ["Variable Declaration", "Variable Declaration", "Variable Declaration", "Assignment", "Assignment", "Output (cout)", "Selection (if)"],
+    "expected_symbols": [
+      {"name": "a", "dtype": "int", "offset": 0, "tm_offset": 0},
+      {"name": "b", "dtype": "float", "offset": 4, "tm_offset": 1},
+      {"name": "c", "dtype": "int", "offset": 12, "tm_offset": 2},
+      {"name": "scoped", "dtype": "int", "offset": 16, "tm_offset": 3}
+    ],
+    "expected_ci_fragments": ["t1 = 5 * 2", "t2 = a + t1", "write c", "write scoped"],
+    "expected_tm_fragments": ["LDC", "MUL", "DIV", "OUT", "HALT"],
+    "tm_runs": [
+      {
+        "name": "precedence_and_scope",
+        "inputs": [],
+        "expected_outputs": [18, 99],
+        "expected_status": "srHALT",
+        "max_steps": 5000
+      }
+    ]
+  },
+  {
+    "id": "errors_all_phases",
+    "program": "errors_semantic.jpp",
+    "expect_success": false,
+    "min_valid_tokens": 30,
+    "expected_ast_root_kind": "Program",
+    "expected_diagnostic_phases": ["Lexical", "Syntax", "Semantic"],
+    "expected_error_substrings": [
+      "Unexpected Token ('@')",
+      "Duplicate declaration of 'x'",
+      "Undeclared variable 'y'",
+      "Type mismatch in assignment",
+      "boolean type"
+    ],
+    "tm_runs": []
+  },
+  {
+    "id": "infinite_loop_watchdog",
+    "program": "infinite_loop.jpp",
+    "expect_success": true,
+    "min_valid_tokens": 15,
+    "expected_ast_root_kind": "Program",
+    "expected_symbols": [
+      {"name": "x", "dtype": "int", "offset": 0, "tm_offset": 0}
+    ],
+    "expected_ci_fragments": ["if_false", "goto"],
+    "expected_tm_fragments": ["LDA", "HALT"],
+    "tm_runs": [
+      {
+        "name": "watchdog_aborts_infinite_loop",
+        "inputs": [],
+        "expect_step_limit_error": true,
+        "max_steps": 250
+      }
+    ]
+  }
+]
