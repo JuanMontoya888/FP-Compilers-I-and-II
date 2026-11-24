@@ -70,8 +70,19 @@ class SemanticAnalyzer:
             result += self._build_ast_string(child, level + 1)
         return result
 
+    def _extract_node_meta(self, node):
+        """Extracts and caches immutable node_kind and raw_value before visual mutations."""
+        node_kind = node.node_kind if getattr(node, 'node_kind', None) else node.name
+        raw_val = node.raw_value if getattr(node, 'raw_value', None) not in (None, "") else node.value
+        node.node_kind = node_kind
+        node.raw_value = raw_val
+        return node_kind, raw_val
+
     def _traverse(self, node):
         if not node: return
+
+        # Preserve immutable AST metadata before visual annotations mutate node.name / node.value
+        node_kind, raw_val = self._extract_node_meta(node)
 
         # =====================================================================
         # PRE-ORDER TRAVERSAL (Downward)
@@ -81,25 +92,43 @@ class SemanticAnalyzer:
         # declarations to insert them into the symbol table BEFORE evaluating 
         # their children (inherited attributes).
         # =====================================================================
-        if node.name in ["Selection (if)", "Iteration (while)", "Repetition (do-while)", "Program", "Then Block", "Else Block", "Do Body"]:
+        if node_kind in ["Selection (if)", "Iteration (while)", "Repetition (do-while)", "Program", "Then Block", "Else Block", "Do Body"]:
             self.sym_table.enter_scope()
 
         # Handle different node types
-        if node.name == "Variable Declaration":
-            dtype = node.value # Inherited attribute
+        if node_kind == "Variable Declaration":
+            dtype = raw_val # Inherited attribute
             for child in node.children:
-                if child.name == "Identifier":
-                    var_name = child.value
+                child_kind, child_raw = self._extract_node_meta(child)
+                if child_kind == "Identifier":
+                    var_name = child_raw
                     if not self.sym_table.insert(var_name, dtype, child.line):
                         self.report_error(f"Duplicate declaration of '{var_name}' in the same scope", child.line, child.col, child)
+                    sym = self.sym_table.lookup(var_name)
+                    child.var_name = var_name
                     child.dtype = dtype # annotate AST
+                    child.mem_offset = sym.offset if sym else None
+                    child.tm_offset = sym.tm_offset if sym else None
                     child.name = f"Identifier\n-> ({dtype})"
-                elif child.name == "Initialization":
+                elif child_kind == "Initialization":
                     var_node = child.children[0]
-                    var_name = var_node.value
+                    _, var_name = self._extract_node_meta(var_node)
                     if not self.sym_table.insert(var_name, dtype, var_node.line):
                         self.report_error(f"Duplicate declaration of '{var_name}' in the same scope", var_node.line, var_node.col, var_node)
+                    sym = self.sym_table.lookup(var_name)
+                    mem_off = sym.offset if sym else None
+                    tm_off = sym.tm_offset if sym else None
+
+                    var_node.var_name = var_name
                     var_node.dtype = dtype
+                    var_node.mem_offset = mem_off
+                    var_node.tm_offset = tm_off
+
+                    child.op = "="
+                    child.var_name = var_name
+                    child.dtype = dtype
+                    child.mem_offset = mem_off
+                    child.tm_offset = tm_off
                     
                     # Need to evaluate expression and type check!
                     if len(child.children) > 1:
@@ -107,7 +136,6 @@ class SemanticAnalyzer:
                         self._traverse(exp_node)
                         self._check_type_compatibility(dtype, getattr(exp_node, 'dtype', 'error'), exp_node, child)
                         
-                        sym = self.sym_table.lookup(var_name)
                         exp_type = getattr(exp_node, 'dtype', 'error')
                         status = "OK"
                         if dtype != exp_type:
@@ -132,7 +160,7 @@ class SemanticAnalyzer:
             
             # Since we traversed children manually for declarations, we can skip general traversal for this node
             
-        elif node.name == "Assignment":
+        elif node_kind == "Assignment":
             # Parent node is Assignment with value "="
             # Children:
             # children[0] = Identifier (target variable token)
@@ -140,21 +168,32 @@ class SemanticAnalyzer:
             if len(node.children) >= 2:
                 id_node = node.children[0]
                 exp_node = node.children[1]
-                var_name = id_node.value
+                _, var_name = self._extract_node_meta(id_node)
             else:
-                var_name = node.value
+                var_name = raw_val
                 id_node = None
                 exp_node = node.children[0] if len(node.children) > 0 else None
+
+            node.op = "="
+            node.var_name = var_name
 
             sym = self.sym_table.lookup(var_name)
             if not sym:
                 self.report_error(f"Undeclared variable '{var_name}'", node.line, node.col, node)
                 node.dtype = "error"
-                if id_node: id_node.dtype = "error"
+                if id_node:
+                    id_node.dtype = "error"
+                    id_node.var_name = var_name
             else:
                 self.sym_table.add_reference(var_name, node.line)
                 node.dtype = sym.dtype
-                if id_node: id_node.dtype = sym.dtype
+                node.mem_offset = sym.offset
+                node.tm_offset = sym.tm_offset
+                if id_node:
+                    id_node.dtype = sym.dtype
+                    id_node.var_name = var_name
+                    id_node.mem_offset = sym.offset
+                    id_node.tm_offset = sym.tm_offset
                 
             # Traverse expression
             if exp_node:
@@ -189,61 +228,93 @@ class SemanticAnalyzer:
                             id_node.name = f"Identifier\n-> ({sym.dtype})"
                         node.name = f"Assignment\n{sym.dtype} = {exp_type} -> {status}"
         
-        elif node.name == "Identifier":
+        elif node_kind == "Identifier":
             # This is a variable usage (in expressions, etc)
-            sym = self.sym_table.lookup(node.value)
+            var_name = raw_val
+            node.var_name = var_name
+            sym = self.sym_table.lookup(var_name)
             if not sym:
-                self.report_error(f"Undeclared variable '{node.value}'", node.line, node.col, node)
+                self.report_error(f"Undeclared variable '{var_name}'", node.line, node.col, node)
                 node.dtype = "error"
             else:
-                self.sym_table.add_reference(node.value, node.line)
+                self.sym_table.add_reference(var_name, node.line)
                 node.dtype = sym.dtype
+                node.mem_offset = sym.offset
+                node.tm_offset = sym.tm_offset
                 if getattr(sym, 'value', None) is not None:
                     node.const_value = sym.value
                     node.name = f"Id ({sym.dtype})\nval = {sym.value}"
                 else:
                     node.name = f"Id ({sym.dtype})"
                 
-        elif node.name in ["Numeric Literal", "Boolean Literal", "String Literal"]:
-            if node.name == "Numeric Literal":
-                node.dtype = "float" if "." in node.value else "int"
+        elif node_kind in ["Numeric Literal", "Boolean Literal", "String Literal"]:
+            if node_kind == "Numeric Literal":
+                node.dtype = "float" if "." in str(raw_val) else "int"
                 try:
-                    if node.dtype == "int": node.const_value = int(node.value)
-                    else: node.const_value = float(node.value)
+                    if node.dtype == "int": node.const_value = int(raw_val)
+                    else: node.const_value = float(raw_val)
                 except: pass
-            elif node.name == "Boolean Literal":
+            elif node_kind == "Boolean Literal":
                 node.dtype = "bool"
-                node.const_value = True if node.value == "true" else False
-            elif node.name == "String Literal":
+                node.const_value = True if raw_val == "true" else False
+            elif node_kind == "String Literal":
                 node.dtype = "string"
                 
-        elif node.name in ["Arithmetic Expression", "Relational Expression", "Logical Expression"]:
+        elif node_kind in ["Arithmetic Expression", "Relational Expression", "Logical Expression", "Logical Operation"]:
             for child in node.children:
                 self._traverse(child)
             
+            # Preserve clean operator before constant folding mutates node.value
+            op_char = str(raw_val)
+            node.op = op_char
+
             if len(node.children) == 2:
                 left_type = getattr(node.children[0], 'dtype', 'error')
                 right_type = getattr(node.children[1], 'dtype', 'error')
-                
-                # The operator character (+, -, *, <, ==, etc.) is stored in node.value
-                op_char = str(node.value)
                 
                 node.dtype = self._get_result_type(op_char, left_type, right_type, node)
                 
                 # Annotate AST node name with detailed type propagation
                 if node.dtype != "error":
-                    node.name = f"{node.name}\n{left_type} {op_char} {right_type} -> {node.dtype}"
+                    node.name = f"{node_kind}\n{left_type} {op_char} {right_type} -> {node.dtype}"
                 
-                # Constant folding
-                if hasattr(node.children[0], 'const_value') and hasattr(node.children[1], 'const_value'):
-                    node.const_value = self._fold_constants(op_char, node.children[0].const_value, node.children[1].const_value)
+                # Constant folding (visual only; codegen still evaluates children)
+                left_const = getattr(node.children[0], 'const_value', None)
+                right_const = getattr(node.children[1], 'const_value', None)
+                if left_const is not None and right_const is not None:
+                    node.const_value = self._fold_constants(op_char, left_const, right_const)
                     if node.const_value is not None:
                         # Append semantic info to the value field for visualization
                         node.value = str(node.const_value)
+
+        elif node_kind == "Logical NOT":
+            node.op = "!"
+            for child in node.children:
+                self._traverse(child)
+
+            if len(node.children) >= 1:
+                inner = node.children[0]
+                inner_type = getattr(inner, 'dtype', 'error')
+                if inner_type == "error":
+                    node.dtype = "error"
+                elif inner_type != "bool":
+                    self.report_error(f"Logical operator '!' requires boolean operand, got {inner_type}", node.line, node.col, node)
+                    node.dtype = "error"
+                else:
+                    node.dtype = "bool"
+                    node.name = f"Logical NOT\n!{inner_type} -> bool"
+                    inner_val = getattr(inner, 'const_value', None)
+                    if isinstance(inner_val, bool):
+                        node.const_value = not inner_val
                         
-        elif node.name == "Unary Operation":
+        elif node_kind == "Unary Operation":
             # The value string is like "x++"
-            var_name = node.value.replace("++", "").replace("--", "")
+            raw_str = str(raw_val)
+            var_name = raw_str.replace("++", "").replace("--", "")
+            op_str = "++" if "++" in raw_str else ("--" if "--" in raw_str else "")
+            node.var_name = var_name
+            node.op = op_str
+
             sym = self.sym_table.lookup(var_name)
             if not sym:
                 self.report_error(f"Undeclared variable '{var_name}' in unary operation", node.line, node.col, node)
@@ -251,19 +322,22 @@ class SemanticAnalyzer:
             else:
                 self.sym_table.add_reference(var_name, node.line)
                 node.dtype = sym.dtype
+                node.mem_offset = sym.offset
+                node.tm_offset = sym.tm_offset
                 if sym.dtype not in ["int", "float"]:
                     self.report_error(f"Invalid operand: Unary operations require numeric types, got {sym.dtype}", node.line, node.col, node)
                     node.dtype = "error"
                 else:
                     if getattr(sym, 'value', None) is not None:
-                        if "++" in node.value:
+                        if "++" in raw_str:
                             sym.value += 1
-                        elif "--" in node.value:
+                        elif "--" in raw_str:
                             sym.value -= 1
-                        node.name = f"{node.name}\nval = {sym.value}"
+                        node.name = f"{node_kind}\nval = {sym.value}"
                     
-        elif node.name == "Input (cin)":
-            var_name = node.value
+        elif node_kind == "Input (cin)":
+            var_name = raw_val
+            node.var_name = var_name
             if var_name: # might be empty on syntax error
                 sym = self.sym_table.lookup(var_name)
                 if not sym:
@@ -272,6 +346,8 @@ class SemanticAnalyzer:
                 else:
                     self.sym_table.add_reference(var_name, node.line)
                     node.dtype = sym.dtype
+                    node.mem_offset = sym.offset
+                    node.tm_offset = sym.tm_offset
                     sym.value = None # Runtime user input resets constant value
                     
         else:
@@ -290,20 +366,10 @@ class SemanticAnalyzer:
             # =================================================================
             
             # Post-order: check conditions for control flow
-            if node.name in ["Selection (if)", "Iteration (while)"]:
-                if len(node.children) > 0:
-                    cond_node = node.children[0]
-                    if cond_node.name.startswith("Arithmetic") or cond_node.name.startswith("Relational") or cond_node.name.startswith("Logical") or cond_node.name.startswith("Identifier") or "Literal" in cond_node.name:
-                        c_type = getattr(cond_node, 'dtype', 'error')
-                        if c_type not in ["bool", "error"]:
-                            self.report_error(f"Condition expression must be of boolean type, got {c_type}", node.line, node.col, cond_node)
-            elif node.name == "Repetition (do-while)":
-                if len(node.children) > 1:
-                    cond_node = node.children[1] # Condition is the 2nd child
-                    if cond_node.name.startswith("Arithmetic") or cond_node.name.startswith("Relational") or cond_node.name.startswith("Logical") or cond_node.name.startswith("Identifier") or "Literal" in cond_node.name:
-                        c_type = getattr(cond_node, 'dtype', 'error')
-                        if c_type not in ["bool", "error"]:
-                            self.report_error(f"Condition expression must be of boolean type, got {c_type}", node.line, node.col, cond_node)
+            if node_kind in ["Selection (if)", "Iteration (while)", "Repetition (do-while)"]:
+                cond_idx = 1 if node_kind == "Repetition (do-while)" else 0
+                if len(node.children) > cond_idx:
+                    self._validate_condition_node(node.children[cond_idx], node)
                         
         # Append semantic info to the node name for visualization
         if hasattr(node, 'dtype') and node.dtype and node.dtype != "error":
@@ -312,8 +378,27 @@ class SemanticAnalyzer:
                     node.name = f"{node.name}\n-> {node.dtype}"
                 
         # Post-order: Exit Scopes
-        if node.name in ["Selection (if)", "Iteration (while)", "Repetition (do-while)", "Program", "Then Block", "Else Block", "Do Body"]:
+        if node_kind in ["Selection (if)", "Iteration (while)", "Repetition (do-while)", "Program", "Then Block", "Else Block", "Do Body"]:
             self.sym_table.exit_scope()
+
+    def _validate_condition_node(self, cond_node, parent_node):
+        """Ensures control-flow condition expressions evaluate to boolean."""
+        cond_kind = getattr(cond_node, 'node_kind', cond_node.name)
+        expr_kinds = {
+            "Arithmetic Expression",
+            "Relational Expression",
+            "Logical Expression",
+            "Logical Operation",
+            "Logical NOT",
+            "Identifier",
+            "Numeric Literal",
+            "Boolean Literal",
+            "String Literal",
+        }
+        if cond_kind in expr_kinds or cond_node.name.startswith(("Arithmetic", "Relational", "Logical", "Identifier")) or "Literal" in cond_node.name:
+            c_type = getattr(cond_node, 'dtype', 'error')
+            if c_type not in ["bool", "error"]:
+                self.report_error(f"Condition expression must be of boolean type, got {c_type}", parent_node.line, parent_node.col, cond_node)
 
     # =========================================================================
     # TINY EQUIVALENT: typeError() checks inside typeCheck()

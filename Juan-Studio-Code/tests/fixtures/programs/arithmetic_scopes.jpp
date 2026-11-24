@@ -1,0 +1,12 @@
+main {
+    int a = 10;
+    float b = 2.5;
+    int c;
+    c = a + 5 * 2 - 4 / 2;
+    b = a + b;
+    cout << c;
+    if (c >= 18 && a != 0) {
+        int scoped = 99;
+        cout << scoped;
+    }
+}
